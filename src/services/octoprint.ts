@@ -140,6 +140,37 @@ export async function uploadFile(p: PrinterConnection, filename: string, content
   throw new Error('upload not implemented');
 }
 
+export async function requestAppKey(host: string, port: number, appName = "OctoPulse", useHttps=false) {
+  const proto = useHttps ? 'https' : 'http';
+  const url = `${proto}://${host}:${port}/plugin/appkeys/request`;
+  const controller = new AbortController();
+  const t = setTimeout(()=> controller.abort(), 8000);
+  try {
+    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ app: appName }), signal: controller.signal });
+    if (!res.ok) {
+      const txt = await res.text().catch(()=> '');
+      throw new Error(`AppKeys not available (${res.status}) ${txt.slice(0,80)} - Enable Application Keys plugin in OctoPrint settings or use manual API key`);
+    }
+    return await res.json() as { app_token: string };
+  } finally { clearTimeout(t); }
+}
+export async function pollAppKey(host: string, port: number, appToken: string, useHttps=false) {
+  const proto = useHttps ? 'https' : 'http';
+  const url = `${proto}://${host}:${port}/plugin/appkeys/request/${appToken}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Poll failed ${res.status}`);
+  const j = await res.json();
+  // OctoPrint returns { api_key: "xxx" } when approved, { api_key: null } while pending
+  return j as { api_key: string | null, api_key_pending?: boolean };
+}
+export async function probeAppKeys(host: string, port: number, useHttps=false): Promise<boolean> {
+  const proto = useHttps ? 'https' : 'http';
+  try {
+    const res = await fetch(`${proto}://${host}:${port}/plugin/appkeys/request`, { method: 'OPTIONS' });
+    return res.status !== 404;
+  } catch { return true; }
+}
+
 // Helper to build snapshot URL with api key bypass if needed
 export function snapshotUrlWithKey(p: PrinterConnection, snap: string) {
   // OctoPrint webcam often doesn't need api key, but add as query if needed

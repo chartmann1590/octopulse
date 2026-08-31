@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "434536518846",
+    "project_id": "octopulse-charles-2026",
+    "storage_bucket": "octopulse-charles-2026.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:434536518846:android:0ca3a7c4950a65e71c7aef",
+        "android_client_info": {
+          "package_name": "com.charles.octopulse"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAMMUG1SwsX9E2O7SXyafyahqF8sUx4bsg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

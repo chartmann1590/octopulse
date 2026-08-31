@@ -142,31 +142,50 @@ export async function uploadFile(p: PrinterConnection, filename: string, content
 
 export async function requestAppKey(host: string, port: number, appName = "OctoPulse", useHttps=false) {
   const proto = useHttps ? 'https' : 'http';
-  const url = `${proto}://${host}:${port}/plugin/appkeys/request`;
+  const url = `${proto}://${host}:${port}/api/plugin/appkeys/request`;
   const controller = new AbortController();
-  const t = setTimeout(()=> controller.abort(), 8000);
+  const t = setTimeout(()=> controller.abort(), 10000);
   try {
     const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ app: appName }), signal: controller.signal });
+    const txt = await res.clone().text().catch(()=> '');
     if (!res.ok) {
-      const txt = await res.text().catch(()=> '');
-      throw new Error(`AppKeys not available (${res.status}) ${txt.slice(0,80)} - Enable Application Keys plugin in OctoPrint settings or use manual API key`);
+      throw new Error(`AppKeys request failed (${res.status}) ${txt.slice(0,120)} - Ensure Application Keys plugin is enabled in OctoPrint Settings -> Application Keys`);
     }
-    return await res.json() as { app_token: string };
+    // OctoPrint 1.8+ returns { app_token: "..." } with 201, older may return Location header
+    let j: any = {};
+    try { j = JSON.parse(txt); } catch {}
+    if (j.app_token) return j as { app_token: string };
+    // Fallback: try to get token from Location header
+    const loc = res.headers.get('Location') || res.headers.get('location') || '';
+    if (loc) {
+      const m = loc.match(/\/([^\/]+)\/?$/);
+      if (m) return { app_token: m[1] };
+    }
+    if (txt && txt.length < 100) {
+      // Some versions return token as plain text
+      return { app_token: txt.trim().replace(/"/g,'') };
+    }
+    throw new Error('Could not parse app_token from response: ' + txt.slice(0,100));
   } finally { clearTimeout(t); }
 }
 export async function pollAppKey(host: string, port: number, appToken: string, useHttps=false) {
   const proto = useHttps ? 'https' : 'http';
-  const url = `${proto}://${host}:${port}/plugin/appkeys/request/${appToken}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Poll failed ${res.status}`);
-  const j = await res.json();
+  const url = `${proto}://${host}:${port}/api/plugin/appkeys/request/${encodeURIComponent(appToken)}`;
+  const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+  if (res.status === 404) throw new Error('Request not found or denied - please re-request and approve quickly (expires in 30s)');
+  if (res.status === 401 || res.status === 403) throw new Error('Not authorized to poll - check OctoPrint Application Keys settings');
+  if (!res.ok) {
+    const txt = await res.text().catch(()=> '');
+    throw new Error(`Poll failed ${res.status} ${txt.slice(0,80)}`);
+  }
+  const j = await res.json().catch(async ()=> ({ api_key: await res.text().catch(()=> null) }));
   // OctoPrint returns { api_key: "xxx" } when approved, { api_key: null } while pending
-  return j as { api_key: string | null, api_key_pending?: boolean };
+  return j as { api_key: string | null };
 }
 export async function probeAppKeys(host: string, port: number, useHttps=false): Promise<boolean> {
   const proto = useHttps ? 'https' : 'http';
   try {
-    const res = await fetch(`${proto}://${host}:${port}/plugin/appkeys/request`, { method: 'OPTIONS' });
+    const res = await fetch(`${proto}://${host}:${port}/api/plugin/appkeys/request`, { method: 'OPTIONS' });
     return res.status !== 404;
   } catch { return true; }
 }

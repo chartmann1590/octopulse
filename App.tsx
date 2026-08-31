@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import {
   StyleSheet,
@@ -21,7 +21,7 @@ import * as Notifications from 'expo-notifications';
 import { theme } from './src/theme/index';
 import { PrinterProvider, usePrinters } from './src/context/PrinterContext';
 import { PrinterCard } from './src/components/PrinterCard';
-import { AdBanner } from './src/components/AdBanner';
+import { AdBanner, useInterstitial } from './src/components/AdBanner';
 import { CameraView } from './src/components/CameraView';
 import { GCodeViewer } from './src/components/GCodeViewer';
 import { PrinterConnection, DiscoveryResult } from './src/types';
@@ -35,7 +35,7 @@ function Header({ title, subtitle, right }: { title: string; subtitle?: string; 
   return (
     <View style={styles.header}>
       <View style={styles.headerLeft}>
-        <View style={styles.logo}><Text style={styles.logoText}>◈</Text></View>
+        <View style={styles.logo}><Text style={styles.logoText}>â—ˆ</Text></View>
         <View>
           <Text style={styles.headerTitle}>{title}</Text>
           {subtitle ? <Text style={styles.headerSubtitle}>{subtitle}</Text> : null}
@@ -63,7 +63,7 @@ function DashboardScreen({ onSelect, onDiscover }: { onSelect: (p: PrinterConnec
     <ScrollView style={styles.screen} contentContainerStyle={{ padding: 16, paddingBottom: 100 }} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />}>
       <View style={styles.hero}>
         <Text style={styles.heroTitle}>OctoPulse</Text>
-        <Text style={styles.heroSub}>Monitor • Control • Print</Text>
+        <Text style={styles.heroSub}>Monitor â€¢ Control â€¢ Print</Text>
         <View style={styles.heroStats}>
           <View style={styles.stat}><Text style={styles.statNum}>{printers.length}</Text><Text style={styles.statLabel}>Printers</Text></View>
           <View style={styles.statDivider} />
@@ -75,11 +75,11 @@ function DashboardScreen({ onSelect, onDiscover }: { onSelect: (p: PrinterConnec
 
       {printers.length===0 ? (
         <View style={styles.empty}>
-          <Text style={styles.emptyIcon}>🖨️</Text>
+          <Text style={styles.emptyIcon}>ðŸ–¨ï¸</Text>
           <Text style={styles.emptyTitle}>No printers yet</Text>
           <Text style={styles.emptySub}>Auto-discover OctoPrint servers on your Wi-Fi or add manually with IP + API key.</Text>
-          <TouchableOpacity onPress={onDiscover} style={styles.primaryBtn}><Text style={styles.primaryBtnText}>🔍 Discover Printers</Text></TouchableOpacity>
-          <Text style={styles.hintText}>Tip: Find API key in OctoPrint → Settings → API</Text>
+          <TouchableOpacity onPress={onDiscover} style={styles.primaryBtn}><Text style={styles.primaryBtnText}>ðŸ” Discover Printers</Text></TouchableOpacity>
+          <Text style={styles.hintText}>Tip: Find API key in OctoPrint â†’ Settings â†’ API</Text>
         </View>
       ) : (
         <>
@@ -99,8 +99,8 @@ function DashboardScreen({ onSelect, onDiscover }: { onSelect: (p: PrinterConnec
       )}
 
       <View style={styles.infoCard}>
-        <Text style={styles.infoTitle}>✨ OctoPrint Features</Text>
-        <Text style={styles.infoText}>• Auto-discovery (mDNS / SSDP / IP scan){"\n"}• Live progress, temps, camera, GCode{"\n"}• Pause / Cancel / Jog / Home{"\n"}• Files browser + viewer{"\n"}• Local notifications</Text>
+        <Text style={styles.infoTitle}>âœ¨ OctoPrint Features</Text>
+        <Text style={styles.infoText}>â€¢ Auto-discovery (mDNS / SSDP / IP scan){"\n"}â€¢ Live progress, temps, camera, GCode{"\n"}â€¢ Pause / Cancel / Jog / Home{"\n"}â€¢ Files browser + viewer{"\n"}â€¢ Local notifications</Text>
       </View>
     </ScrollView>
   );
@@ -144,6 +144,7 @@ function DiscoverScreen({ onAdded, onClose }: { onAdded: ()=>void; onClose: ()=>
     try {
       await testConnection(p);
       await addPrinter(p);
+      showInterstitial();
       Alert.alert('Added!', `${p.name} is now monitored.`);
       onAdded();
     } catch (e:any) { Alert.alert('Connection failed', e.message + '\nCheck API key & network'); }
@@ -167,6 +168,7 @@ function DiscoverScreen({ onAdded, onClose }: { onAdded: ()=>void; onClose: ()=>
     try {
       await testConnection(p);
       await addPrinter(p);
+      showInterstitial();
       Alert.alert('Added!', `${p.name} connected`);
       onAdded();
     } catch (e:any) { Alert.alert('Failed', e.message); }
@@ -175,7 +177,7 @@ function DiscoverScreen({ onAdded, onClose }: { onAdded: ()=>void; onClose: ()=>
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={{ padding:16, paddingBottom:100 }}>
-      <Header title="Add Printer" subtitle="Auto-discover or manual" right={<TouchableOpacity onPress={onClose} style={styles.iconBtn}><Text style={styles.iconBtnText}>✕</Text></TouchableOpacity>} />
+      <Header title="Add Printer" subtitle="Auto-discover or manual" right={<TouchableOpacity onPress={onClose} style={styles.iconBtn}><Text style={styles.iconBtnText}>âœ•</Text></TouchableOpacity>} />
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Manual Entry</Text>
         <Text style={styles.label}>Name (optional)</Text>
@@ -187,27 +189,27 @@ function DiscoverScreen({ onAdded, onClose }: { onAdded: ()=>void; onClose: ()=>
           <View style={{ flex:1 }}><Text style={styles.label}>HTTPS</Text><View style={styles.switchRow}><Text style={styles.switchLabel}>{manual.useHttps ? 'Yes' : 'No'}</Text><Switch value={manual.useHttps} onValueChange={v=> setManual({...manual, useHttps:v})} trackColor={{ true: theme.colors.primary }} /></View></View>
         </View>
         <Text style={styles.label}>API Key *</Text>
-        <TextInput style={styles.input} placeholder="Paste from OctoPrint → Settings → API" placeholderTextColor={theme.colors.textDim} value={manual.apiKey} onChangeText={v=> setManual({...manual, apiKey:v})} autoCapitalize="none" secureTextEntry />
+        <TextInput style={styles.input} placeholder="Paste from OctoPrint â†’ Settings â†’ API" placeholderTextColor={theme.colors.textDim} value={manual.apiKey} onChangeText={v=> setManual({...manual, apiKey:v})} autoCapitalize="none" secureTextEntry />
         <TouchableOpacity onPress={addManual} disabled={testing} style={[styles.primaryBtn, testing && { opacity:0.6 }]}>
-          {testing ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>➕ Add Manually & Test</Text>}
+          {testing ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>âž• Add Manually & Test</Text>}
         </TouchableOpacity>
       </View>
 
       <View style={styles.card}>
         <View style={styles.rowBetween}>
           <Text style={styles.cardTitle}>Discovered ({results.length})</Text>
-          <TouchableOpacity onPress={startScan} disabled={scanning} style={styles.smallBtn}><Text style={styles.smallBtnText}>{scanning ? 'Scanning...' : '↻ Rescan'}</Text></TouchableOpacity>
+          <TouchableOpacity onPress={startScan} disabled={scanning} style={styles.smallBtn}><Text style={styles.smallBtnText}>{scanning ? 'Scanning...' : 'â†» Rescan'}</Text></TouchableOpacity>
         </View>
-        {scanning && <View style={{ flexDirection:'row', gap:8, alignItems:'center', marginTop:8 }}><ActivityIndicator color={theme.colors.primary} /><Text style={styles.muted}>Scanning subnet 254 hosts × 4 ports...</Text></View>}
+        {scanning && <View style={{ flexDirection:'row', gap:8, alignItems:'center', marginTop:8 }}><ActivityIndicator color={theme.colors.primary} /><Text style={styles.muted}>Scanning subnet 254 hosts Ã— 4 ports...</Text></View>}
         {results.length===0 && !scanning ? <Text style={styles.muted}>No servers found. Ensure OctoPrint and phone are on same Wi-Fi.</Text> : null}
         {results.map((r,i)=> (
           <TouchableOpacity key={`${r.host}:${r.port}_${i}`} onPress={()=> addFromDiscovery(r)} style={styles.discoverRow}>
-            <View style={styles.discoverIcon}><Text style={{ fontSize:18 }}>🖨️</Text></View>
+            <View style={styles.discoverIcon}><Text style={{ fontSize:18 }}>ðŸ–¨ï¸</Text></View>
             <View style={{ flex:1 }}>
               <Text style={styles.discoverName}>{r.name}</Text>
-              <Text style={styles.discoverSub}>{r.host}:{r.port} • {r.via} {r.version? `• ${r.version}`:''}</Text>
+              <Text style={styles.discoverSub}>{r.host}:{r.port} â€¢ {r.via} {r.version? `â€¢ ${r.version}`:''}</Text>
             </View>
-            <Text style={styles.discoverAdd}>Add →</Text>
+            <Text style={styles.discoverAdd}>Add â†’</Text>
           </TouchableOpacity>
         ))}
         <Text style={styles.hintText}>Tip: Tap a discovered server after entering API key above to add instantly. Interstitial ad will show on add (test).</Text>
@@ -243,7 +245,7 @@ function PrinterDetail({ printer, onBack }: { printer: PrinterConnection; onBack
       await jobCommand(printer, cmd);
       await refreshStatuses();
       // show interstitial placeholder
-      Alert.alert('Command sent', `${cmd} → ${printer.name}`);
+      Alert.alert('Command sent', `${cmd} â†’ ${printer.name}`);
     } catch (e:any) { Alert.alert('Failed', e.message); }
   };
 
@@ -262,19 +264,19 @@ function PrinterDetail({ printer, onBack }: { printer: PrinterConnection; onBack
 
   return (
     <View style={styles.screen}>
-      <Header title={printer.name} subtitle={`${printer.host}:${printer.port} • ${status?.state || '...'} `} right={<TouchableOpacity onPress={onBack} style={styles.iconBtn}><Text style={styles.iconBtnText}>‹ Back</Text></TouchableOpacity>} />
+      <Header title={printer.name} subtitle={`${printer.host}:${printer.port} â€¢ ${status?.state || '...'} `} right={<TouchableOpacity onPress={onBack} style={styles.iconBtn}><Text style={styles.iconBtnText}>â€¹ Back</Text></TouchableOpacity>} />
       {/* Progress hero */}
       <ScrollView contentContainerStyle={{ padding:16, paddingBottom:100 }}>
         <View style={styles.detailHero}>
           <View style={{ flex:1 }}>
             <Text style={styles.detailFile} numberOfLines={2}>{status?.job.file?.display || 'No file loaded'}</Text>
-            <Text style={styles.detailProgress}>{status?.job.progress.completion ? `${status.job.progress.completion.toFixed(1)}%` : '0%'} • {isPrinting ? 'Printing' : status?.state}</Text>
+            <Text style={styles.detailProgress}>{status?.job.progress.completion ? `${status.job.progress.completion.toFixed(1)}%` : '0%'} â€¢ {isPrinting ? 'Printing' : status?.state}</Text>
             <View style={styles.progressBar}><View style={[styles.progressFill, { width: `${Math.min(100, status?.job.progress.completion||0)}%`}]} /></View>
-            <Text style={styles.detailTime}>{status?.job.progress.printTime ? `${Math.floor(status.job.progress.printTime/60)}m elapsed` : ''} {status?.job.progress.printTimeLeft ? `• ${Math.floor(status.job.progress.printTimeLeft/60)}m left` : ''}</Text>
+            <Text style={styles.detailTime}>{status?.job.progress.printTime ? `${Math.floor(status.job.progress.printTime/60)}m elapsed` : ''} {status?.job.progress.printTimeLeft ? `â€¢ ${Math.floor(status.job.progress.printTimeLeft/60)}m left` : ''}</Text>
           </View>
           <View style={styles.detailTemps}>
-            <View style={styles.miniTemp}><Text style={styles.miniTempLabel}>Nozzle</Text><Text style={styles.miniTempVal}>{status?.temps.tool0 ? `${Math.round(status.temps.tool0.actual)}°/${Math.round(status.temps.tool0.target)}°` : '--'}</Text></View>
-            <View style={styles.miniTemp}><Text style={styles.miniTempLabel}>Bed</Text><Text style={styles.miniTempVal}>{status?.temps.bed ? `${Math.round(status.temps.bed.actual)}°/${Math.round(status.temps.bed.target)}°` : '--'}</Text></View>
+            <View style={styles.miniTemp}><Text style={styles.miniTempLabel}>Nozzle</Text><Text style={styles.miniTempVal}>{status?.temps.tool0 ? `${Math.round(status.temps.tool0.actual)}Â°/${Math.round(status.temps.tool0.target)}Â°` : '--'}</Text></View>
+            <View style={styles.miniTemp}><Text style={styles.miniTempLabel}>Bed</Text><Text style={styles.miniTempVal}>{status?.temps.bed ? `${Math.round(status.temps.bed.actual)}Â°/${Math.round(status.temps.bed.target)}Â°` : '--'}</Text></View>
           </View>
         </View>
 
@@ -287,18 +289,18 @@ function PrinterDetail({ printer, onBack }: { printer: PrinterConnection; onBack
         {tab==='status' && (
           <View style={{ gap:12 }}>
             <View style={styles.grid2}>
-              <View style={styles.statCard}><Text style={styles.statCardLabel}>State</Text><Text style={styles.statCardVal}>{status?.state || '—'}</Text></View>
-              <View style={styles.statCard}><Text style={styles.statCardLabel}>File Size</Text><Text style={styles.statCardVal}>{status?.job.file?.size ? `${(status.job.file.size/1024).toFixed(1)} KB` : '—'}</Text></View>
-              <View style={styles.statCard}><Text style={styles.statCardLabel}>Print Time</Text><Text style={styles.statCardVal}>{status?.job.progress.printTime ? `${(status.job.progress.printTime/60).toFixed(1)}m` : '—'}</Text></View>
-              <View style={styles.statCard}><Text style={styles.statCardLabel}>Filament</Text><Text style={styles.statCardVal}>{status?.job.filament?.length ? `${(status.job.filament.length/1000).toFixed(2)}m` : '—'}</Text></View>
+              <View style={styles.statCard}><Text style={styles.statCardLabel}>State</Text><Text style={styles.statCardVal}>{status?.state || 'â€”'}</Text></View>
+              <View style={styles.statCard}><Text style={styles.statCardLabel}>File Size</Text><Text style={styles.statCardVal}>{status?.job.file?.size ? `${(status.job.file.size/1024).toFixed(1)} KB` : 'â€”'}</Text></View>
+              <View style={styles.statCard}><Text style={styles.statCardLabel}>Print Time</Text><Text style={styles.statCardVal}>{status?.job.progress.printTime ? `${(status.job.progress.printTime/60).toFixed(1)}m` : 'â€”'}</Text></View>
+              <View style={styles.statCard}><Text style={styles.statCardLabel}>Filament</Text><Text style={styles.statCardVal}>{status?.job.filament?.length ? `${(status.job.filament.length/1000).toFixed(2)}m` : 'â€”'}</Text></View>
             </View>
             <View style={styles.card}>
               <Text style={styles.cardTitle}>Controls</Text>
               <View style={styles.btnGrid}>
-                <TouchableOpacity onPress={()=> handleJob('pause')} style={[styles.controlBtn, { backgroundColor: theme.colors.warning }]}><Text style={styles.controlBtnText}>⏸ Pause</Text></TouchableOpacity>
-                <TouchableOpacity onPress={()=> handleJob('resume')} style={[styles.controlBtn, { backgroundColor: theme.colors.success }]}><Text style={styles.controlBtnText}>▶ Resume</Text></TouchableOpacity>
-                <TouchableOpacity onPress={()=> handleJob('cancel')} style={[styles.controlBtn, { backgroundColor: theme.colors.error }]}><Text style={styles.controlBtnText}>■ Cancel</Text></TouchableOpacity>
-                <TouchableOpacity onPress={refreshStatuses} style={[styles.controlBtn, { backgroundColor: theme.colors.primary }]}><Text style={styles.controlBtnText}>↻ Refresh</Text></TouchableOpacity>
+                <TouchableOpacity onPress={()=> handleJob('pause')} style={[styles.controlBtn, { backgroundColor: theme.colors.warning }]}><Text style={styles.controlBtnText}>â¸ Pause</Text></TouchableOpacity>
+                <TouchableOpacity onPress={()=> handleJob('resume')} style={[styles.controlBtn, { backgroundColor: theme.colors.success }]}><Text style={styles.controlBtnText}>â–¶ Resume</Text></TouchableOpacity>
+                <TouchableOpacity onPress={()=> handleJob('cancel')} style={[styles.controlBtn, { backgroundColor: theme.colors.error }]}><Text style={styles.controlBtnText}>â–  Cancel</Text></TouchableOpacity>
+                <TouchableOpacity onPress={refreshStatuses} style={[styles.controlBtn, { backgroundColor: theme.colors.primary }]}><Text style={styles.controlBtnText}>â†» Refresh</Text></TouchableOpacity>
               </View>
             </View>
           </View>
@@ -311,7 +313,7 @@ function PrinterDetail({ printer, onBack }: { printer: PrinterConnection; onBack
               <View style={styles.jogGrid}>
                 <TouchableOpacity onPress={()=> jog(printer,'y',10)} style={styles.jogBtn}><Text style={styles.jogText}>Y+</Text></TouchableOpacity>
                 <TouchableOpacity onPress={()=> jog(printer,'x',-10)} style={styles.jogBtn}><Text style={styles.jogText}>X-</Text></TouchableOpacity>
-                <TouchableOpacity onPress={()=> home(printer,['x','y','z'])} style={[styles.jogBtn,{backgroundColor: theme.colors.accent}]}><Text style={styles.jogText}>⌖ Home</Text></TouchableOpacity>
+                <TouchableOpacity onPress={()=> home(printer,['x','y','z'])} style={[styles.jogBtn,{backgroundColor: theme.colors.accent}]}><Text style={styles.jogText}>âŒ– Home</Text></TouchableOpacity>
                 <TouchableOpacity onPress={()=> jog(printer,'x',10)} style={styles.jogBtn}><Text style={styles.jogText}>X+</Text></TouchableOpacity>
                 <TouchableOpacity onPress={()=> jog(printer,'y',-10)} style={styles.jogBtn}><Text style={styles.jogText}>Y-</Text></TouchableOpacity>
                 <TouchableOpacity onPress={()=> jog(printer,'z',10)} style={styles.jogBtn}><Text style={styles.jogText}>Z+</Text></TouchableOpacity>
@@ -330,17 +332,17 @@ function PrinterDetail({ printer, onBack }: { printer: PrinterConnection; onBack
 
         {tab==='files' && (
           <View style={styles.card}>
-            <View style={styles.rowBetween}><Text style={styles.cardTitle}>Files</Text><TouchableOpacity onPress={loadFiles} style={styles.smallBtn}><Text style={styles.smallBtnText}>↻</Text></TouchableOpacity></View>
+            <View style={styles.rowBetween}><Text style={styles.cardTitle}>Files</Text><TouchableOpacity onPress={loadFiles} style={styles.smallBtn}><Text style={styles.smallBtnText}>â†»</Text></TouchableOpacity></View>
             {filesLoading ? <ActivityIndicator color={theme.colors.primary} /> : files.length===0 ? <Text style={styles.muted}>No files or failed to load. Check API key.</Text> : (
               <View>
                 {flattenFiles(files).slice(0,50).map((f:any, i:number)=> (
                   <TouchableOpacity key={i} onPress={()=> loadGCode(f.path)} style={styles.fileRow}>
-                    <View style={styles.fileIcon}><Text>📄</Text></View>
+                    <View style={styles.fileIcon}><Text>ðŸ“„</Text></View>
                     <View style={{ flex:1 }}>
                       <Text style={styles.fileName} numberOfLines={1}>{f.display || f.name}</Text>
-                      <Text style={styles.fileMeta}>{f.origin} • {(f.size/1024).toFixed(1)}KB • {f.gcodeAnalysis?.estimatedPrintTime ? `${(f.gcodeAnalysis.estimatedPrintTime/60).toFixed(0)}m` : ''}</Text>
+                      <Text style={styles.fileMeta}>{f.origin} â€¢ {(f.size/1024).toFixed(1)}KB â€¢ {f.gcodeAnalysis?.estimatedPrintTime ? `${(f.gcodeAnalysis.estimatedPrintTime/60).toFixed(0)}m` : ''}</Text>
                     </View>
-                    <Text style={styles.fileAction}>View →</Text>
+                    <Text style={styles.fileAction}>View â†’</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -352,7 +354,7 @@ function PrinterDetail({ printer, onBack }: { printer: PrinterConnection; onBack
         {tab==='gcode' && (
           <View style={{ gap:12 }}>
             {selectedFile ? <Text style={styles.muted}>File: {selectedFile}</Text> : null}
-            {gcodeText ? <GCodeViewer gcode={gcodeText} /> : <View style={styles.empty}><Text style={styles.emptyTitle}>No GCode loaded</Text><Text style={styles.emptySub}>Go to Files → tap View to load GCode viewer (2D + 3D).</Text></View>}
+            {gcodeText ? <GCodeViewer gcode={gcodeText} /> : <View style={styles.empty}><Text style={styles.emptyTitle}>No GCode loaded</Text><Text style={styles.emptySub}>Go to Files â†’ tap View to load GCode viewer (2D + 3D).</Text></View>}
             {gcodeText ? <View style={styles.card}><Text style={styles.cardTitle}>Raw Preview (first 500 chars)</Text><Text style={{ color: theme.colors.textMuted, fontSize:10, fontFamily: Platform.OS==='android' ? 'monospace' : 'Courier' }}>{gcodeText.slice(0,500)}</Text></View> : null}
           </View>
         )}
@@ -367,7 +369,7 @@ function TempControl({ printer, status }: { printer: PrinterConnection; status?:
   return (
     <View style={{ gap:10 }}>
       <View style={styles.tempRow}>
-        <Text style={styles.tempLabel}>Tool0: {status?.temps.tool0 ? `${Math.round(status.temps.tool0.actual)}° → ${Math.round(status.temps.tool0.target)}°` : '--'}</Text>
+        <Text style={styles.tempLabel}>Tool0: {status?.temps.tool0 ? `${Math.round(status.temps.tool0.actual)}Â° â†’ ${Math.round(status.temps.tool0.target)}Â°` : '--'}</Text>
         <View style={styles.tempInputRow}>
           <TextInput style={[styles.input, { flex:1 }]} value={toolTemp} onChangeText={setToolTempLocal} keyboardType="number-pad" placeholder="200" placeholderTextColor={theme.colors.textDim} />
           <TouchableOpacity onPress={()=> setToolTemp(printer,'tool0', parseInt(toolTemp)||0)} style={styles.smallBtn}><Text style={styles.smallBtnText}>Set</Text></TouchableOpacity>
@@ -375,7 +377,7 @@ function TempControl({ printer, status }: { printer: PrinterConnection; status?:
         </View>
       </View>
       <View style={styles.tempRow}>
-        <Text style={styles.tempLabel}>Bed: {status?.temps.bed ? `${Math.round(status.temps.bed.actual)}° → ${Math.round(status.temps.bed.target)}°` : '--'}</Text>
+        <Text style={styles.tempLabel}>Bed: {status?.temps.bed ? `${Math.round(status.temps.bed.actual)}Â° â†’ ${Math.round(status.temps.bed.target)}Â°` : '--'}</Text>
         <View style={styles.tempInputRow}>
           <TextInput style={[styles.input, { flex:1 }]} value={bedTemp} onChangeText={setBedTempLocal} keyboardType="number-pad" placeholder="60" placeholderTextColor={theme.colors.textDim} />
           <TouchableOpacity onPress={()=> setBedTemp(printer, parseInt(bedTemp)||0)} style={styles.smallBtn}><Text style={styles.smallBtnText}>Set</Text></TouchableOpacity>
@@ -408,7 +410,7 @@ function SettingsScreen() {
   const [testLoading, setTestLoading] = useState(false);
   return (
     <ScrollView style={styles.screen} contentContainerStyle={{ padding:16, paddingBottom:100 }}>
-      <Header title="Settings" subtitle="Notifications • Ads • About" />
+      <Header title="Settings" subtitle="Notifications • About" />
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Notifications (Local Polling)</Text>
         <View style={styles.settingRow}><Text style={styles.settingLabel}>Enable Notifications</Text><Switch value={settings.notificationsEnabled} onValueChange={v=> updateSettings({ notificationsEnabled: v })} trackColor={{ true: theme.colors.primary }} /></View>
@@ -422,31 +424,23 @@ function SettingsScreen() {
         <TouchableOpacity onPress={async ()=> {
           setTestLoading(true);
           await ensurePermissions();
-          await sendLocal('OctoPulse Test ✅', `Monitoring ${printers.length} printer(s) • Poll ${settings.pollIntervalMs}ms`);
+          await sendLocal('OctoPulse Test âœ…', `Monitoring ${printers.length} printer(s) â€¢ Poll ${settings.pollIntervalMs}ms`);
           setTestLoading(false);
         }} style={styles.primaryBtn}>
-          {testLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>🔔 Send Test Notification</Text>}
+          {testLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>ðŸ”” Send Test Notification</Text>}
         </TouchableOpacity>
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Ads (AdMob Test)</Text>
-        <Text style={styles.muted}>Banner shown on every screen footer (test IDs). Interstitial triggers on printer add & print complete. Replace with your IDs before Play Store publish.</Text>
-        <View style={{ backgroundColor: theme.colors.bg, borderRadius:10, padding:10, marginTop:8, borderWidth:1, borderColor: theme.colors.border }}>
-          <Text style={styles.codeText}>androidAppId: ca-app-pub-3940256099942544~3347511713{"\n"}banner: ca-app-pub-3940256099942544/6300978111{"\n"}interstitial: ca-app-pub-3940256099942544/1033173712</Text>
-        </View>
       </View>
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Firebase (Crashlytics + Performance)</Text>
         <Text style={styles.muted}>Crashlytics & Perf are configured via native modules when google-services.json is present. Test crash button below logs to Crashlytics (native build required).</Text>
-        <TouchableOpacity onPress={()=> { Alert.alert('Crashlytics', 'Test log sent (check Firebase console after native build)'); }} style={[styles.smallBtn, { marginTop:8 }]}><Text style={styles.smallBtnText}>🧪 Log Test Crash</Text></TouchableOpacity>
+        <TouchableOpacity onPress={()=> { Alert.alert('Crashlytics', 'Test log sent (check Firebase console after native build)'); }} style={[styles.smallBtn, { marginTop:8 }]}><Text style={styles.smallBtnText}>ðŸ§ª Log Test Crash</Text></TouchableOpacity>
       </View>
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>About OctoPulse</Text>
-        <Text style={styles.muted}>Package: com.charles.octopulse{"\n"}Version: 1.0.0{"\n"}API: OctoPrint 1.x REST + WebSocket{"\n"}Discovery: IP scan + SSDP + mDNS ready{"\n"}Built with Expo 57 • React Native 0.86</Text>
-        <Text style={[styles.muted, { marginTop:8, fontStyle:'italic'}]}>Made for Pixel 8 Pro • Beautiful dark mobile interface • Secure storage for API keys</Text>
+        <Text style={styles.muted}>Package: com.charles.octopulse{"\n"}Version: 1.0.0{"\n"}API: OctoPrint 1.x REST + WebSocket{"\n"}Discovery: IP scan + SSDP + mDNS ready{"\n"}Built with Expo 57 â€¢ React Native 0.86</Text>
+        <Text style={[styles.muted, { marginTop:8, fontStyle:'italic'}]}>Made for Pixel 8 Pro â€¢ Beautiful dark mobile interface â€¢ Secure storage for API keys</Text>
       </View>
     </ScrollView>
   );
@@ -483,13 +477,13 @@ function AppInner() {
 
       <View style={styles.bottomNav}>
         <TouchableOpacity onPress={()=> setTab('dashboard')} style={[styles.navItem, tab==='dashboard' && styles.navItemActive]}>
-          <Text style={[styles.navIcon, tab==='dashboard' && styles.navIconActive]}>◈</Text><Text style={[styles.navText, tab==='dashboard' && styles.navTextActive]}>Dashboard</Text>
+          <Text style={[styles.navIcon, tab==='dashboard' && styles.navIconActive]}>â—ˆ</Text><Text style={[styles.navText, tab==='dashboard' && styles.navTextActive]}>Dashboard</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={()=> setShowDiscover(true)} style={styles.navFab}>
-          <Text style={styles.navFabText}>＋</Text>
+          <Text style={styles.navFabText}>ï¼‹</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={()=> setTab('settings')} style={[styles.navItem, tab==='settings' && styles.navItemActive]}>
-          <Text style={[styles.navIcon, tab==='settings' && styles.navIconActive]}>⚙</Text><Text style={[styles.navText, tab==='settings' && styles.navTextActive]}>Settings</Text>
+          <Text style={[styles.navIcon, tab==='settings' && styles.navIconActive]}>âš™</Text><Text style={[styles.navText, tab==='settings' && styles.navTextActive]}>Settings</Text>
         </TouchableOpacity>
       </View>
       <AdBanner />
@@ -602,3 +596,8 @@ const styles = StyleSheet.create({
   navFab: { width:56, height:56, borderRadius:18, backgroundColor: theme.colors.primary, alignItems:'center', justifyContent:'center', elevation:6, shadowColor:'#000', shadowOpacity:0.3, shadowRadius:8 },
   navFabText: { color:'#fff', fontSize:26, fontWeight:'800', marginTop:-2 },
 });
+
+
+
+
+

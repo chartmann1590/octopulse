@@ -127,27 +127,55 @@ function DiscoverScreen({ onAdded, onClose }: { onAdded: ()=>void; onClose: ()=>
   useEffect(()=> { startScan(); }, []);
 
   const addFromDiscovery = async (d: DiscoveryResult) => {
-    if (!manual.apiKey) {
-      Alert.alert('API Key required', 'Enter your OctoPrint API key below, then tap a discovered server to add.');
+    // If we have an API key, use it directly
+    if (manual.apiKey) {
+      const p: PrinterConnection = {
+        id: `p_${Date.now()}`,
+        name: manual.name || d.name || `OctoPrint ${d.host}`,
+        host: d.host,
+        port: d.port,
+        useHttps: false,
+        apiKey: manual.apiKey,
+        createdAt: Date.now(),
+      };
+      setTesting(true);
+      try {
+        await testConnection(p);
+        await addPrinter(p);
+        showInterstitial();
+        Alert.alert('Added!', `${p.name} is now monitored.`);
+        onAdded();
+      } catch (e:any) { Alert.alert('Connection failed', e.message + '\nCheck API key & network'); }
+      setTesting(false);
       return;
     }
-    const p: PrinterConnection = {
-      id: `p_${Date.now()}`,
-      name: manual.name || d.name || `OctoPrint ${d.host}`,
-      host: d.host,
-      port: d.port,
-      useHttps: false,
-      apiKey: manual.apiKey,
-      createdAt: Date.now(),
-    };
+    // No API key - try Application Keys plugin automatically
+    const host = d.host;
+    const port = d.port;
     setTesting(true);
     try {
-      await testConnection(p);
-      await addPrinter(p);
+      const { app_token } = await requestAppKey(host, port, 'OctoPulse', false);
+      Alert.alert('Approve on OctoPrint', 'OctoPulse requested access - Please tap APPROVE in your OctoPrint web UI (popup at top). Waiting 30 seconds...');
+      let apiKey: string | null = null;
+      for(let i=0;i<15;i++){
+        await new Promise(r=> setTimeout(r,2000));
+        const res = await pollAppKey(host, port, app_token, false).catch(()=>null);
+        if (res && res.api_key) { apiKey = res.api_key; break; }
+      }
+      if (!apiKey) throw new Error('Not approved in time - please approve on OctoPrint and try again, or enter API key manually from OctoPrint Settings -> Application Keys');
+      const p2: PrinterConnection = {
+        id: `p_${Date.now()}`,
+        name: manual.name || d.name || `OctoPrint ${d.host}`,
+        host, port, useHttps: false, apiKey, createdAt: Date.now(),
+      };
+      await testConnection(p2);
+      await addPrinter(p2);
       showInterstitial();
-      Alert.alert('Added!', `${p.name} is now monitored.`);
+      Alert.alert('Added!', `${p2.name} approved and added automatically!`);
       onAdded();
-    } catch (e:any) { Alert.alert('Connection failed', e.message + '\nCheck API key & network'); }
+    } catch (e:any) {
+      Alert.alert('Auto-approve failed', e.message + '\n\nFallback: Enter API key manually from OctoPrint Settings -> API, or enable Application Keys plugin (Settings -> Application Keys) and try Request Access button below.');
+    }
     setTesting(false);
   };
 

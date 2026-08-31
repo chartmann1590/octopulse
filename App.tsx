@@ -410,7 +410,7 @@ function SettingsScreen() {
   const [testLoading, setTestLoading] = useState(false);
   return (
     <ScrollView style={styles.screen} contentContainerStyle={{ padding:16, paddingBottom:100 }}>
-      <Header title="Settings" subtitle="Notifications • About" />
+      <Header title="Settings" subtitle="Notifications - About" />
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Notifications (Local Polling)</Text>
         <View style={styles.settingRow}><Text style={styles.settingLabel}>Enable Notifications</Text><Switch value={settings.notificationsEnabled} onValueChange={v=> updateSettings({ notificationsEnabled: v })} trackColor={{ true: theme.colors.primary }} /></View>

@@ -1,4 +1,4 @@
-import { DiscoveryResult, PrinterConnection } from '../types';
+﻿import { DiscoveryResult, PrinterConnection } from '../types';
 import * as Network from 'expo-network';
 
 async function getLocalIp(): Promise<string | null> {
@@ -102,7 +102,6 @@ export async function scanNetwork(onProgress?: (found: DiscoveryResult, scanned:
       for (const { r } of res) {
         scanned++;
         if (r) { push(r); onProgress?.(r, scanned, total); }
-        else if (scanned % 50 === 0) onProgress?.(null as any, scanned, total);
       }
       await new Promise(r=> setTimeout(r, 5));
     }
@@ -168,3 +167,4 @@ export async function quickCheck(host: string, port: number, useHttps=false) {
     return res.ok || res.status===401;
   } catch { return false; }
 }
+

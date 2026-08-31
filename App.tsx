@@ -18,7 +18,7 @@ import {
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import * as SecureStore from 'expo-secure-store';
 import * as Notifications from 'expo-notifications';
-import { theme } from './src/theme';
+import { theme } from './src/theme/index';
 import { PrinterProvider, usePrinters } from './src/context/PrinterContext';
 import { PrinterCard } from './src/components/PrinterCard';
 import { AdBanner } from './src/components/AdBanner';

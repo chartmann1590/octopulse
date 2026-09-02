@@ -1,10 +1,11 @@
 # OctoPulse — Monitor • Control • Print
 
-> Beautiful OctoPrint companion for Android. Auto-discover printers on Wi-Fi, pair with 1-click Application Keys, watch live camera, visualize G-code in 2D/3D, and control your printer from anywhere on your network.
+> Control your OctoPrint 3D printer from your Android phone. Check progress, watch the camera, and manage prints on your Wi-Fi.
 
 **🌐 Website:** https://chartmann1590.github.io/octopulse/  
 **🔒 Privacy Policy:** https://chartmann1590.github.io/octopulse/privacy.html  
-**▶️ Coming soon to Google Play** — free, with respectful ads (AdMob banner + interstitial)
+**▶️ Coming soon to Google Play** — free  
+**☕ Sponsor:** https://buymeacoffee.com/charleshartmann • **GitHub:** https://github.com/chartmann1590/octopulse
 
 [![Deploy site](https://github.com/chartmann1590/octopulse/actions/workflows/pages.yml/badge.svg)](https://github.com/chartmann1590/octopulse/actions/workflows/pages.yml)
 
@@ -56,6 +57,16 @@ Data Safety for Play Console mirrors that policy. Configure the privacy policy U
 ## Tech
 
 - Expo ~57, React Native 0.86, expo-router, react-native-google-mobile-ads, Firebase (Crashlytics/Perf), expo-notifications/secure-store
+
+## Support
+
+Love OctoPulse? Help keep it free:
+
+- ☕ **Buy me a coffee:** https://buymeacoffee.com/charleshartmann
+- ⭐ Star the repo on [GitHub](https://github.com/chartmann1590/octopulse)
+- 🐛 Report issues on [GitHub Issues](https://github.com/chartmann1590/octopulse/issues)
+
+Every coffee helps — thank you!
 
 ## License
 

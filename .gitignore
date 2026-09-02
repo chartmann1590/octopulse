@@ -58,3 +58,11 @@ logs/
 
 # coverage
 coverage/
+
+# promo build artifacts (keep docs/video/promo.mp4 but ignore tmp)
+tools/tmp_audio/
+tools/tmp_clips/
+tools/tmp_slides/
+tools/site-preview.png
+tools/promo-section.png
+tools/screenshots-section.png

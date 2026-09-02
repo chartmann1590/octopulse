@@ -53,6 +53,41 @@ document.addEventListener('click', (e)=>{
   window.scrollTo({top, behavior:'smooth'});
   history.pushState(null,'',id);
 });
+// screenshots lightbox
+const shotMeta = {
+  '01-dashboard': { label: '01 — Dashboard • 2 printers, 1 printing', file: '01-dashboard.png' },
+  '02-discover': { label: '02 — Discover • mDNS / SSDP / manual', file: '02-discover.png' },
+  '03-pairing': { label: '03 — 1-Click Pairing • Waiting for approval', file: '03-pairing.png' },
+  '04-detail': { label: '04 — Detail Overview • camera & job actions', file: '04-detail.png' },
+  '05-control': { label: '05 — Control • jog, temps, fan', file: '05-control.png' },
+  '06-gcode': { label: '06 — G-code • 2D & 3D toolpaths', file: '06-gcode.png' },
+};
+function openShot(id){
+  const meta = shotMeta[id];
+  if(!meta) return;
+  const modal = document.getElementById('shotModal');
+  const img = document.getElementById('shotModalImg');
+  const label = document.getElementById('shotModalLabel');
+  // use optimized 1080 webp for fast lightbox; PNG available as fallback/download
+  const webp = `screenshots/${id}-1080.webp`;
+  const png = `screenshots/${meta.file}`;
+  img.src = webp;
+  img.dataset.png = png;
+  img.onerror = () => { /* keep webp */ };
+  label.textContent = meta.label + '  •  tap image for PNG';
+  img.onclick = () => { window.open(png, '_blank'); };
+  modal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeShot(){
+  const modal = document.getElementById('shotModal');
+  if(!modal) return;
+  modal.classList.remove('open');
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', (e)=>{
+  if(e.key === 'Escape') closeShot();
+});
 // close toast on click
 document.addEventListener('DOMContentLoaded', ()=>{
   const t = document.getElementById('toast');
@@ -62,7 +97,14 @@ document.addEventListener('DOMContentLoaded', ()=>{
     const saved = localStorage.getItem('octopulse_waitlist_email');
     if(saved){
       const i = document.getElementById('notifyEmail');
-      if(i && !i.value) i.placeholder = saved + ' ✓ saved — enter another?';
+      if(i && !i.value) i.placeholder = saved + ' \u2713 saved \u2014 enter another?';
     }
   }catch{}
+  // pause promo video when modal open? not needed
+  // keyboard for shots: Enter on focused shot
+  document.querySelectorAll('.shot').forEach(el=>{
+    el.addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
 });

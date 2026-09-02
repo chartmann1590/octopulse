@@ -10,6 +10,8 @@
   <meta property="og:description" content="Beautiful OctoPrint companion. Auto-discovery, 1-click pairing, live camera, G-code 2D/3D viewer. Coming soon to Google Play." />
   <meta property="og:type" content="website" />
   <meta property="og:image" content="assets/icon.png" />
+  <meta property="og:video" content="https://chartmann1590.github.io/octopulse/video/promo.mp4" />
+  <meta property="og:video:type" content="video/mp4" />
   <link rel="icon" href="assets/favicon.png" />
   <link rel="apple-touch-icon" href="assets/icon.png" />
   <link rel="stylesheet" href="style.css" />
@@ -23,6 +25,20 @@
     "applicationCategory":"UtilitiesApplication",
     "offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},
     "description":"OctoPrint companion — auto-discovery, 1-click pairing, camera, G-code viewer, full control.",
+    "publisher":{"@type":"Organization","name":"OctoPulse"}
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"VideoObject",
+    "name":"OctoPulse — Promo: Your OctoPrint in your pocket",
+    "description":"Official OctoPulse promo — auto-discovery, 1-click pairing, live camera, G-code viewer, and full control. Free with respectful ads. Coming soon to Google Play.",
+    "thumbnailUrl":"https://chartmann1590.github.io/octopulse/video/poster.jpg",
+    "uploadDate":"2026-09-02",
+    "duration":"PT31S",
+    "contentUrl":"https://chartmann1590.github.io/octopulse/video/promo.mp4",
+    "embedUrl":"https://chartmann1590.github.io/octopulse/#promo",
     "publisher":{"@type":"Organization","name":"OctoPulse"}
   }
   </script>
@@ -40,10 +56,11 @@
         </div>
       </a>
       <div class="nav-links">
+        <a href="#promo">Video</a>
+        <a href="#screenshots">Screenshots</a>
         <a href="#features">Features</a>
         <a href="#how">How it works</a>
-        <a href="#ads">Ads & Privacy</a>
-        <a href="privacy.html">Privacy Policy</a>
+        <a href="privacy.html">Privacy</a>
       </div>
       <div class="nav-cta">
         <a href="https://github.com/chartmann1590/octopulse" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">★ GitHub</a>
@@ -163,6 +180,47 @@
     </div>
   </div>
 
+  <!-- PROMO VIDEO -->
+  <section id="promo" class="section video-section" style="padding-top:28px;padding-bottom:32px">
+    <div class="container">
+      <div class="section-label" style="color:var(--accent)">Promo • 31s</div>
+      <h2>See OctoPulse in action.</h2>
+      <p class="section-desc">Real app UI with a natural voiceover and burned-in captions — no stock footage. Watch the full flow from discovery to control.</p>
+      <div class="video-card">
+        <div class="video-wrap">
+          <video
+            id="promoVideo"
+            controls
+            playsinline
+            preload="metadata"
+            poster="video/poster.jpg"
+            style="background:#000"
+          >
+            <source src="video/promo.mp4" type="video/mp4" />
+            <!-- captions burned in, but also provide WebVTT for accessibility -->
+            <track kind="captions" src="video/captions.vtt" srclang="en" label="English (burned-in + VTT)" default />
+            Your browser does not support the video tag. <a href="video/promo.mp4" style="color:#7dd3fc">Download promo</a>
+          </video>
+          <div class="video-overlay-badge"><i></i> PROMO • 31s • CAPTIONS BURNED IN</div>
+        </div>
+        <div class="video-meta">
+          <div class="video-meta-left">
+            <b>Voiceover:</b> en-US Andrew (neural, warm) • <b>Captions:</b> burned-in + VTT • <b>Size:</b> 1.1 MB • 1920×1080, 30fps
+            <br><span>Tip: Tap fullscreen for best view. Captions are hardcoded for Play Store &amp; social sharing.</span>
+          </div>
+          <div class="video-actions">
+            <a href="video/promo.mp4" download class="btn btn-primary btn-sm">⤓ Download MP4</a>
+            <a href="#screenshots" class="btn btn-ghost btn-sm">See screenshots →</a>
+            <button class="btn btn-muted btn-sm" onclick="document.getElementById('promoVideo').requestFullscreen && document.getElementById('promoVideo').requestFullscreen()">⛶ Fullscreen</button>
+          </div>
+        </div>
+        <div class="caption-note">
+          <b>Transcript (burned-in):</b> “Meet OctoPulse. Your OctoPrint, in your pocket. Auto-discover printers on your Wi-Fi in seconds. Pair with one tap. Just approve in OctoPrint. No copy, no paste. Monitor every print. Live camera, progress and temperatures — at a glance. Take full control. Move axes, set temperatures, and preview G-code in 2D and 3D. Stay free with respectful ads that never interrupt a print. OctoPulse. Monitor, Control, Print. Coming soon to Google Play.” • <a href="video/captions.vtt" style="color:#7dd3fc;text-decoration:underline">VTT</a> • <a href="video/captions.srt" style="color:#7dd3fc;text-decoration:underline">SRT</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- FEATURES -->
   <section id="features" class="section">
     <div class="container">
@@ -228,6 +286,106 @@
       </div>
     </div>
   </section>
+
+  <!-- SCREENSHOTS -->
+  <section id="screenshots" class="section" style="padding-top:0">
+    <div class="container">
+      <div class="section-label">Screenshots • Real UI</div>
+      <h2>Pixel-perfect. Dark. Beautiful.</h2>
+      <p class="section-desc">Six high-resolution captures from the actual app (1080×2340, WebP) — not mockups. Tap to view fullscreen. All screens include the ad banner placement as seen on device.</p>
+
+      <div class="screenshots-grid">
+        <div class="shot" onclick="openShot('01-dashboard')" role="button" tabindex="0" aria-label="Dashboard screenshot">
+          <div class="shot-media">
+            <picture>
+              <source srcset="screenshots/01-dashboard-540.webp" media="(max-width: 640px)" type="image/webp">
+              <source srcset="screenshots/01-dashboard-1080.webp" type="image/webp">
+              <img src="screenshots/01-dashboard-1080.webp" alt="OctoPulse Dashboard — 2 printers, 1 printing" loading="lazy">
+            </picture>
+          </div>
+          <div class="shot-badge">01 • Dashboard</div>
+          <div class="shot-label"><b>Dashboard</b><span>2 printers • 1 printing • hero stats</span></div>
+        </div>
+
+        <div class="shot" onclick="openShot('02-discover')" role="button" tabindex="0" aria-label="Discover screenshot">
+          <div class="shot-media">
+            <picture>
+              <source srcset="screenshots/02-discover-540.webp" media="(max-width: 640px)" type="image/webp">
+              <source srcset="screenshots/02-discover-1080.webp" type="image/webp">
+              <img src="screenshots/02-discover-1080.webp" alt="Discover printers on Wi-Fi — mDNS, SSDP, manual entry" loading="lazy">
+            </picture>
+          </div>
+          <div class="shot-badge">02 • Discover</div>
+          <div class="shot-label"><b>Discover</b><span>mDNS • SSDP • subnet scan • Pair & Connect</span></div>
+        </div>
+
+        <div class="shot" onclick="openShot('03-pairing')" role="button" tabindex="0" aria-label="Pairing screenshot">
+          <div class="shot-media">
+            <picture>
+              <source srcset="screenshots/03-pairing-540.webp" media="(max-width: 640px)" type="image/webp">
+              <source srcset="screenshots/03-pairing-1080.webp" type="image/webp">
+              <img src="screenshots/03-pairing-1080.webp" alt="1-Click Application Keys pairing modal waiting for approval" loading="lazy">
+            </picture>
+          </div>
+          <div class="shot-badge">03 • 1-Click Pairing</div>
+          <div class="shot-label"><b>Pairing</b><span>Approve in OctoPrint • 60s countdown • no API copy</span></div>
+        </div>
+
+        <div class="shot" onclick="openShot('04-detail')" role="button" tabindex="0" aria-label="Detail overview screenshot">
+          <div class="shot-media">
+            <picture>
+              <source srcset="screenshots/04-detail-540.webp" media="(max-width: 640px)" type="image/webp">
+              <source srcset="screenshots/04-detail-1080.webp" type="image/webp">
+              <img src="screenshots/04-detail-1080.webp" alt="Printer detail overview — progress, temps, camera, job actions" loading="lazy">
+            </picture>
+          </div>
+          <div class="shot-badge">04 • Detail</div>
+          <div class="shot-label"><b>Overview</b><span>Progress • camera • job actions • stats</span></div>
+        </div>
+
+        <div class="shot" onclick="openShot('05-control')" role="button" tabindex="0" aria-label="Control screenshot">
+          <div class="shot-media">
+            <picture>
+              <source srcset="screenshots/05-control-540.webp" media="(max-width: 640px)" type="image/webp">
+              <source srcset="screenshots/05-control-1080.webp" type="image/webp">
+              <img src="screenshots/05-control-1080.webp" alt="Control tab — jog XYZ, extruder, presets, fan" loading="lazy">
+            </picture>
+          </div>
+          <div class="shot-badge">05 • Control</div>
+          <div class="shot-label"><b>Control</b><span>Jog • extrude • temps • fan</span></div>
+        </div>
+
+        <div class="shot" onclick="openShot('06-gcode')" role="button" tabindex="0" aria-label="G-code screenshot">
+          <div class="shot-media">
+            <picture>
+              <source srcset="screenshots/06-gcode-540.webp" media="(max-width: 640px)" type="image/webp">
+              <source srcset="screenshots/06-gcode-1080.webp" type="image/webp">
+              <img src="screenshots/06-gcode-1080.webp" alt="G-code 2D and 3D layer visualizer with toolpaths" loading="lazy">
+            </picture>
+          </div>
+          <div class="shot-badge">06 • G-code</div>
+          <div class="shot-label"><b>G-code</b><span>2D &amp; 3D • layers • toolpaths</span></div>
+        </div>
+      </div>
+
+      <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <span class="badge-soft">📱 1080×2340 • Android • dark theme</span>
+        <span class="badge-soft">🗜️ WebP 50–60 KB each • PNG 500+ KB on click</span>
+        <a href="screenshots/" class="badge-soft" style="color:var(--primary-light);border-color:rgba(14,165,233,0.18)">Browse all →</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Lightbox modal -->
+  <div id="shotModal" class="screenshot-modal" onclick="if(event.target===this) closeShot()" role="dialog" aria-modal="true" aria-label="Screenshot preview">
+    <div class="modal-inner">
+      <img id="shotModalImg" src="" alt="Screenshot fullscreen preview">
+      <div class="modal-bar">
+        <span id="shotModalLabel">Screenshot</span>
+        <button class="modal-close" onclick="closeShot()" aria-label="Close">✕</button>
+      </div>
+    </div>
+  </div>
 
   <!-- HOW IT WORKS -->
   <section id="how" class="section" style="padding-top:0">

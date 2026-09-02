@@ -1,0 +1,35 @@
+1
+00:00:00,120 --> 00:00:01,726
+Meet OctoPulse.
+
+2
+00:00:01,895 --> 00:00:06,597
+Your OctoPrint, in your pocket.
+Auto-discover printers on Wi-Fi in seconds.
+
+3
+00:00:06,767 --> 00:00:11,421
+Pair with one tap.
+Just approve in OctoPrint.
+
+4
+00:00:11,591 --> 00:00:16,533
+Monitor every print.
+Live camera, progress and temperatures.
+
+5
+00:00:16,704 --> 00:00:22,701
+Take full control.
+Move axes, set temperatures, preview G-code.
+
+6
+00:00:22,871 --> 00:00:26,277
+Free, with respectful ads
+that never interrupt a print.
+
+7
+00:00:26,448 --> 00:00:31,125
+OctoPulse
+Monitor • Control • Print
+Coming soon to Google Play
+

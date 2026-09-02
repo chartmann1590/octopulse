@@ -1,0 +1,76 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=1080, initial-scale=1"><link rel="stylesheet" href="base.css">
+<style>
+.tabs{margin:0 28px 16px;display:flex;gap:8px}
+.tab{flex:1;padding:14px 6px;border-radius:999px;text-align:center;font-weight:800;font-size:16px;letter-spacing:0.04em}
+.tab.active{background:#0ea5e9;color:white}
+.tab.idle{background:rgba(255,255,255,0.06);color:#94a3b8;border:1px solid rgba(255,255,255,0.06)}
+.card2{margin:0 28px 16px;padding:22px;border-radius:24px;background:rgba(15,23,42,0.85);border:1px solid rgba(255,255,255,0.06)}
+.card2 h3{font-size:24px;font-weight:750;color:#f8fafc;display:flex;justify-content:space-between;align-items:center}
+.step-row{display:flex;gap:10px;align-items:center;margin-top:16px}
+.step-label{font-size:18px;font-weight:700;color:#94a3b8}
+.chip{padding:10px 16px;border-radius:999px;font-weight:700;font-size:18px;text-align:center;min-width:92px}
+.chip-active{background:#0ea5e9;color:white;border:1px solid #0ea5e9}
+.chip-idle{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.06);color:#94a3b8}
+.jog-wrap{display:grid;place-items:center;margin-top:18px}
+.jog-grid{display:grid;grid-template-columns:120px 120px 120px;gap:14px}
+.jog-btn{width:120px;height:120px;border-radius:18px;background:#1e293b;border:1px solid rgba(255,255,255,0.08);display:grid;place-items:center;color:#f8fafc;font-weight:800;font-size:26px}
+.jog-btn.accent{background:#f97316;border-color:#fb923c}
+.jog-btn.primary{background:#0ea5e9;border-color:#38bdf8}
+.extrude-row{display:flex;gap:14px;margin-top:16px}
+.extrude-btn{flex:1;padding:18px;border-radius:14px;text-align:center;font-weight:800;font-size:20px}
+.temp-row{display:flex;justify-content:space-between;align-items:center;margin-top:14px}
+.preset{padding:10px 14px;border-radius:999px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.06);color:#94a3b8;font-weight:700;font-size:16px}
+.fan-row{display:flex;gap:10px;margin-top:14px}
+.fan{flex:1;padding:14px;border-radius:999px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.06);color:#94a3b8;text-align:center;font-weight:700;font-size:18px}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="statusbar"><span class="time">9:41</span><span class="right">◉ ◉ ◉  █ 100%</span></div>
+  <div class="notch-gap"></div>
+  <div class="app-header">
+    <div class="logo">OP</div>
+    <div class="header-text"><h1>Ender 3 V2</h1><p>192.168.1.50:5000 • PRINTING</p></div>
+    <div class="header-right">←</div>
+  </div>
+  <div class="tabs"><div class="tab idle">OVERVIEW</div><div class="tab active">CONTROL</div><div class="tab idle">G-CODE</div><div class="tab idle">FILES</div><div class="tab idle">TERM</div><div class="tab idle">ALERTS</div></div>
+
+  <div class="card2">
+    <h3>Movement & Jog <span style="padding:8px 14px;border-radius:999px;background:#eab308;color:#000;font-size:16px">⚡ Motors Off</span></h3>
+    <div class="step-row"><span class="step-label">Step:</span><span class="chip chip-idle">0.1mm</span><span class="chip chip-idle">1mm</span><span class="chip chip-active">10mm</span><span class="chip chip-idle">50mm</span><span class="chip chip-idle">100mm</span></div>
+    <div class="jog-wrap">
+      <div style="display:flex;flex-direction:column;gap:14px;align-items:center">
+        <div class="jog-btn">+Y</div>
+        <div style="display:flex;gap:14px"><div class="jog-btn">-X</div><div class="jog-btn accent">XY ⌂</div><div class="jog-btn">+X</div></div>
+        <div class="jog-btn">-Y</div>
+        <div style="display:flex;gap:14px;margin-top:10px"><div class="jog-btn">+Z</div><div class="jog-btn primary">ALL ⌂</div><div class="jog-btn accent">Z ⌂</div><div class="jog-btn">-Z</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card2">
+    <h3>Extruder Feed</h3>
+    <div class="step-row"><span class="step-label">Amount:</span><span class="chip chip-idle">5mm</span><span class="chip chip-active">10mm</span><span class="chip chip-idle">25mm</span><span class="chip chip-idle">50mm</span></div>
+    <div class="extrude-row">
+      <div class="extrude-btn" style="background:#22c55e;color:white">↓ Extrude (+10mm)</div>
+      <div class="extrude-btn" style="background:#eab308;color:#000">↑ Retract (-10mm)</div>
+    </div>
+  </div>
+
+  <div class="card2">
+    <h3>Temperature Presets & Control</h3>
+    <div class="temp-row"><span style="font-size:20px;color:#f8fafc">Nozzle: <b style="color:#7dd3fc">212° / 215°</b></span><span style="padding:8px 12px;border-radius:999px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.18);color:#fca5a5;font-weight:700;font-size:16px">Turn Off</span></div>
+    <div style="display:flex;gap:10px;margin-top:12px"><span class="preset" style="background:#0ea5e9;color:white">PLA 200°</span><span class="preset">PETG 235°</span><span class="preset">ABS 245°</span><span class="preset">TPU 220°</span></div>
+    <div class="temp-row" style="margin-top:16px"><span style="font-size:20px;color:#f8fafc">Bed: <b style="color:#fb923c">60° / 60°</b></span><span style="padding:8px 12px;border-radius:999px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.18);color:#fca5a5;font-weight:700;font-size:16px">Turn Off</span></div>
+    <div style="display:flex;gap:10px;margin-top:12px"><span class="preset" style="background:#f97316;color:white">PLA 60°</span><span class="preset">PETG 80°</span><span class="preset">ABS 100°</span><span class="preset">Off 0°</span></div>
+  </div>
+
+  <div class="card2">
+    <h3>Part Cooling Fan</h3>
+    <div class="fan-row"><span class="fan">Off</span><span class="fan">25%</span><span class="fan" style="background:#0ea5e9;color:white">50%</span><span class="fan">75%</span><span class="fan">100%</span></div>
+  </div>
+
+  <div class="ad-banner"><span>Ad</span> Banner • Control screen</div>
+</div>
+</body></html>

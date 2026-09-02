@@ -1,0 +1,79 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=1080, initial-scale=1"><link rel="stylesheet" href="base.css">
+<style>
+.detail-hero{margin:12px 28px 16px;padding:24px;border-radius:24px;background:linear-gradient(180deg,rgba(30,41,59,0.85),rgba(15,23,42,0.85));border:1px solid rgba(255,255,255,0.06);display:flex;gap:16px}
+.detail-left{flex:1}
+.file{font-size:26px;font-weight:700;color:#f8fafc}
+.progress-text{font-size:20px;color:#94a3b8;margin-top:6px}
+.mini-temps{display:flex;flex-direction:column;gap:10px;min-width:210px}
+.mini{padding:14px 16px;border-radius:14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.06);text-align:center}
+.mini span{font-size:16px;letter-spacing:0.08em;color:#94a3b8;font-weight:700;display:block}
+.mini b{font-size:24px;font-weight:800;color:#7dd3fc;margin-top:4px;display:block}
+.tabs{margin:0 28px 16px;display:flex;gap:8px;overflow:hidden}
+.tab{flex:1;padding:14px 6px;border-radius:999px;text-align:center;font-weight:800;font-size:16px;letter-spacing:0.04em}
+.tab.active{background:#0ea5e9;color:white}
+.tab.idle{background:rgba(255,255,255,0.06);color:#94a3b8;border:1px solid rgba(255,255,255,0.06)}
+.cam{margin:0 28px 16px;height:360px;border-radius:24px;overflow:hidden;background:#000;border:1px solid rgba(255,255,255,0.08);position:relative;display:grid;place-items:center}
+.cam img{width:100%;height:100%;object-fit:cover;opacity:0.92}
+.cam-overlay{position:absolute;inset:0;background:linear-gradient(180deg,transparent 60%,rgba(0,0,0,0.55));}
+.cam-badge{position:absolute;top:16px;left:16px;padding:8px 12px;border-radius:999px;background:rgba(239,68,68,0.90);color:white;font-weight:800;font-size:16px;display:flex;gap:8px;align-items:center}
+.cam-badge i{width:10px;height:10px;border-radius:50%;background:white;animation:pulse 1.2s infinite}
+.cam-bottom{position:absolute;bottom:14px;left:16px;right:16px;display:flex;justify-content:space-between;align-items:center;color:white;font-size:18px;font-weight:600}
+.btn-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:0 28px 16px}
+.ctrl-btn{padding:16px;border-radius:14px;text-align:center;font-weight:700;font-size:20px;color:white}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:0 28px}
+.stat-card{padding:18px;border-radius:18px;background:rgba(15,23,42,0.85);border:1px solid rgba(255,255,255,0.06)}
+.stat-card span{font-size:16px;letter-spacing:0.08em;color:#94a3b8;font-weight:700}
+.stat-card b{font-size:24px;color:#f8fafc;margin-top:6px;display:block}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="statusbar"><span class="time">9:41</span><span class="right">◉ ◉ ◉  █ 100%</span></div>
+  <div class="notch-gap"></div>
+  <div class="app-header">
+    <div class="logo">OP</div>
+    <div class="header-text"><h1>Ender 3 V2</h1><p>192.168.1.50:5000 • PRINTING</p></div>
+    <div class="header-right">←</div>
+  </div>
+  <div class="detail-hero">
+    <div class="detail-left">
+      <div class="file">benchy_0.2mm_PLA.gcode</div>
+      <div class="progress-text">48.2% • Printing</div>
+      <div class="progress" style="margin:12px 0"><div class="fill" style="width:48%"></div></div>
+      <div class="progress-text">12m elapsed • 18m remaining</div>
+    </div>
+    <div class="mini-temps">
+      <div class="mini"><span>NOZZLE</span><b>212° / 215°</b></div>
+      <div class="mini"><span>BED</span><b>60° / 60°</b></div>
+    </div>
+  </div>
+  <div class="tabs">
+    <div class="tab active">OVERVIEW</div><div class="tab idle">CONTROL</div><div class="tab idle">G-CODE</div><div class="tab idle">FILES</div><div class="tab idle">TERM</div><div class="tab idle">ALERTS</div>
+  </div>
+  <div class="cam">
+    <div style="position:absolute;inset:0;background:linear-gradient(135deg,#0f172a,#1e293b);display:grid;place-items:center;color:#475569;font-size:22px">📷 Live Camera • Tap to expand<br><span style="font-size:18px;color:#64748b">MJPEG • 1920×1080 • ~15 fps</span></div>
+    <div class="cam-badge"><i></i> LIVE</div>
+    <div class="cam-overlay"></div>
+    <div class="cam-bottom"><span>● Ender 3 V2</span><span>⛶ Fullscreen</span></div>
+  </div>
+  <div style="margin:0 28px 14px;padding:18px;border-radius:18px;background:rgba(15,23,42,0.85);border:1px solid rgba(255,255,255,0.06);display:flex;justify-content:space-between;align-items:center">
+    <div><div style="font-size:22px;font-weight:750;color:#f8fafc">G-Code Layer Toolpaths</div><div style="font-size:18px;color:#94a3b8">benchy_0.2mm_PLA.gcode</div></div>
+    <div style="padding:10px 14px;border-radius:999px;background:#0ea5e9;color:white;font-weight:700;font-size:16px">📐 View Layers →</div>
+  </div>
+  <div class="btn-grid">
+    <div class="ctrl-btn" style="background:#eab308;color:#000">⏸ Pause Print</div>
+    <div class="ctrl-btn" style="background:#ef4444">■ Cancel Print</div>
+    <div class="ctrl-btn" style="background:#0ea5e9">↻ Refresh State</div>
+    <div class="ctrl-btn" style="background:#b91c1c">⛔ Emergency Stop</div>
+  </div>
+  <div class="stat-grid">
+    <div class="stat-card"><span>STATE</span><b>Printing</b></div>
+    <div class="stat-card"><span>FILE SIZE</span><b>1,240 KB</b></div>
+    <div class="stat-card"><span>PRINT TIME</span><b>12m</b></div>
+    <div class="stat-card"><span>FILAMENT</span><b>2.84 m</b></div>
+  </div>
+  <div style="height:8px"></div>
+  <div class="ad-banner"><span>Ad</span> Banner anchored • never covers controls</div>
+</div>
+</body></html>

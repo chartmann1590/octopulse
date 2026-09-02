@@ -4,6 +4,7 @@ import {
   StyleSheet,
   Text,
   View,
+  Image,
   ScrollView,
   TouchableOpacity,
   TextInput,
@@ -59,10 +60,11 @@ function Header({
   return (
     <View style={styles.header}>
       <View style={styles.headerLeft}>
-        <View style={styles.logo}>
-          <Text style={styles.logoText}>OP</Text>
-        </View>
-        <View>
+        <Image
+          source={require('./assets/icon.png')}
+          style={{ width: 38, height: 38, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.border }}
+        />
+        <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle} numberOfLines={1}>
             {title}
           </Text>
@@ -1577,14 +1579,14 @@ function AppInner() {
 
       <View style={styles.bottomNav}>
         <TouchableOpacity onPress={() => setTab('dashboard')} style={[styles.navItem, tab === 'dashboard' && styles.navItemActive]}>
-          <Text style={[styles.navIcon, tab === 'dashboard' && styles.navIconActive]}>◉</Text>
-          <Text style={[styles.navText, tab === 'dashboard' && styles.navTextActive]}>Dashboard</Text>
+          <Text style={[styles.navIcon, tab === 'dashboard' && styles.navIconActive]}>🖨️</Text>
+          <Text style={[styles.navText, tab === 'dashboard' && styles.navTextActive]}>Printers</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => setShowDiscover(true)} style={styles.navFab}>
-          <Text style={styles.navFabText}>+</Text>
+          <Text style={styles.navFabText}>＋</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => setTab('settings')} style={[styles.navItem, tab === 'settings' && styles.navItemActive]}>
-          <Text style={[styles.navIcon, tab === 'settings' && styles.navIconActive]}>⚙</Text>
+          <Text style={[styles.navIcon, tab === 'settings' && styles.navIconActive]}>⚙️</Text>
           <Text style={[styles.navText, tab === 'settings' && styles.navTextActive]}>Settings</Text>
         </TouchableOpacity>
       </View>

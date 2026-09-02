@@ -18,6 +18,8 @@ type Ctx = {
 
 const PrinterContext = createContext<Ctx>(null as any);
 
+import { updateAndroidWidget } from '../services/widget';
+
 export function PrinterProvider({ children }: { children: React.ReactNode }) {
   const [printers, setPrinters] = useState<PrinterConnection[]>([]);
   const [statuses, setStatuses] = useState<Record<string, PrinterStatus>>({});
@@ -83,6 +85,10 @@ export function PrinterProvider({ children }: { children: React.ReactNode }) {
       }
     }));
     setStatuses(next);
+    const activePrinter = printers.find(p => next[p.id]?.stateFlags?.printing) || printers[0];
+    if (activePrinter) {
+      updateAndroidWidget(activePrinter, next[activePrinter.id]);
+    }
   }, [printers]);
 
   useEffect(() => {

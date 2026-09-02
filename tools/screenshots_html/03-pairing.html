@@ -1,0 +1,51 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=1080, initial-scale=1"><link rel="stylesheet" href="base.css">
+<style>
+.backdrop{position:absolute;inset:0;background:rgba(2,6,23,0.72);backdrop-filter:blur(6px);display:grid;place-items:center;padding:28px}
+.modal{width:100%;max-width:980px;background:#0f172a;border:1px solid rgba(255,255,255,0.08);border-radius:28px;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,0.5)}
+.modal-header{padding:28px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.06)}
+.modal-header h2{font-size:34px;font-weight:800;color:#f8fafc}
+.modal-header p{font-size:20px;color:#94a3b8;margin-top:6px}
+.modal-body{padding:36px 32px;text-align:center}
+.pulsing{width:110px;height:110px;border-radius:999px;margin:0 auto 18px;display:grid;place-items:center;background:rgba(14,165,233,0.12);border:2px solid rgba(14,165,233,0.18);font-size:54px;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(14,165,233,0.25)}50%{box-shadow:0 0 0 24px rgba(14,165,233,0)}}
+.instr-title{font-size:28px;font-weight:800;color:#f8fafc;margin-bottom:12px}
+.instr{font-size:22px;line-height:1.6;color:#94a3b8}
+.count-pill{margin:22px auto 0;display:inline-flex;gap:12px;align-items:center;padding:14px 20px;border-radius:999px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.06);color:#7dd3fc;font-weight:700;font-size:20px}
+.count-pill i{width:16px;height:16px;border:3px solid #0ea5e9;border-top-color:transparent;border-radius:999px;display:inline-block;animation:spin 0.9s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.modal-footer{padding:22px;display:flex;justify-content:center;border-top:1px solid rgba(255,255,255,0.06)}
+.cancel{padding:14px 26px;border-radius:999px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.06);color:#94a3b8;font-weight:700;font-size:20px}
+.blur-bg{filter:blur(2px);opacity:0.98}
+</style>
+</head>
+<body>
+<div class="phone" style="position:relative">
+  <div class="statusbar"><span class="time">9:41</span><span class="right">◉ ◉ ◉  █ 100%</span></div>
+  <div class="notch-gap"></div>
+  <div class="blur-bg">
+    <div class="app-header">
+      <div class="logo">OP</div>
+      <div class="header-text"><h1>OctoPulse</h1><p>ADD OCTOPRINT SERVER</p></div>
+      <div class="header-right">✕</div>
+    </div>
+    <div style="margin:12px 28px 18px;padding:18px;border-radius:18px;background:rgba(14,165,233,0.10);border:1px solid rgba(14,165,233,0.18);color:#7dd3fc;font-weight:600;font-size:22px;text-align:center">Scanning… 2 servers found</div>
+    <div style="margin:0 28px 20px;padding:26px;border-radius:24px;background:rgba(15,23,42,0.85);border:1px solid rgba(255,255,255,0.06)">
+      <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:26px;font-weight:750;color:#f8fafc">Discovered on Local Network (2)</span><span style="padding:8px 14px;border-radius:999px;background:rgba(255,255,255,0.06);font-size:18px;color:#94a3b8">↻ Rescan</span></div>
+      <div style="margin-top:18px;display:flex;gap:18px;align-items:center;padding:20px;border-radius:18px;background:rgba(30,41,59,0.70)"><div style="width:66px;height:66px;border-radius:16px;background:rgba(14,165,233,0.12);display:grid;place-items:center;font-size:30px">🖨️</div><div style="flex:1"><div style="font-size:26px;font-weight:700;color:#f8fafc">OctoPrint @ 192.168.1.50</div><div style="font-size:20px;color:#94a3b8">192.168.1.50:5000 • via mDNS</div></div><div style="padding:10px 16px;border-radius:999px;background:#0ea5e9;color:white;font-weight:700;font-size:18px">Pair →</div></div>
+    </div>
+  </div>
+  <div class="backdrop">
+    <div class="modal">
+      <div class="modal-header"><h2>Connect to OctoPrint</h2><p>OctoPrint @ 192.168.1.50 (192.168.1.50:5000)</p></div>
+      <div class="modal-body">
+        <div class="pulsing">🔔</div>
+        <div class="instr-title">Approve Access on OctoPrint</div>
+        <div class="instr">Open your OctoPrint web interface in your browser.<br><br>A popup has appeared at the top — click <b style="color:#22c55e">ALLOW</b> or <b style="color:#0ea5e9">APPROVE</b>.</div>
+        <div class="count-pill"><i></i> Waiting for approval (42s)</div>
+      </div>
+      <div class="modal-footer"><span class="cancel">Cancel</span></div>
+    </div>
+  </div>
+</div>
+</body></html>

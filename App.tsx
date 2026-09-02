@@ -1548,7 +1548,6 @@ function flattenFiles(files: any[]): any[] {
 function AppInner() {
   const [tab, setTab] = useState<'dashboard' | 'discover' | 'settings'>('dashboard');
   const [selected, setSelected] = useState<PrinterConnection | null>(null);
-  const [showDiscover, setShowDiscover] = useState(false);
 
   useEffect(() => {
     ensurePermissions();
@@ -1560,29 +1559,21 @@ function AppInner() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
-      {tab === 'dashboard' && <DashboardScreen onSelect={setSelected} onDiscover={() => setShowDiscover(true)} />}
-      {tab === 'settings' && <SettingsScreen />}
-
-      {showDiscover && (
-        <Modal animationType="slide" presentationStyle="pageSheet" visible={showDiscover} onRequestClose={() => setShowDiscover(false)}>
-          <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.bg }}>
-            <DiscoverScreen
-              onAdded={() => {
-                setShowDiscover(false);
-                setTab('dashboard');
-              }}
-              onClose={() => setShowDiscover(false)}
-            />
-          </SafeAreaView>
-        </Modal>
+      {tab === 'dashboard' && <DashboardScreen onSelect={setSelected} onDiscover={() => setTab('discover')} />}
+      {tab === 'discover' && (
+        <DiscoverScreen
+          onAdded={() => setTab('dashboard')}
+          onClose={() => setTab('dashboard')}
+        />
       )}
+      {tab === 'settings' && <SettingsScreen />}
 
       <View style={styles.bottomNav}>
         <TouchableOpacity onPress={() => setTab('dashboard')} style={[styles.navItem, tab === 'dashboard' && styles.navItemActive]}>
           <Text style={[styles.navIcon, tab === 'dashboard' && styles.navIconActive]}>🖨️</Text>
           <Text style={[styles.navText, tab === 'dashboard' && styles.navTextActive]}>Printers</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => setShowDiscover(true)} style={styles.navFab}>
+        <TouchableOpacity onPress={() => setTab('discover')} style={[styles.navFab, tab === 'discover' && { backgroundColor: '#0284c7' }]}>
           <Text style={styles.navFabText}>＋</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => setTab('settings')} style={[styles.navItem, tab === 'settings' && styles.navItemActive]}>

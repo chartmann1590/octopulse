@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import {
   StyleSheet,
@@ -16,29 +16,59 @@ import {
   Dimensions,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import * as SecureStore from 'expo-secure-store';
-import * as Notifications from 'expo-notifications';
 import { theme } from './src/theme/index';
 import { PrinterProvider, usePrinters } from './src/context/PrinterContext';
 import { PrinterCard } from './src/components/PrinterCard';
 import { AdBanner, useInterstitial } from './src/components/AdBanner';
 import { CameraView } from './src/components/CameraView';
 import { GCodeViewer } from './src/components/GCodeViewer';
-import { PrinterConnection, DiscoveryResult } from './src/types';
+import { PrinterConnection, DiscoveryResult, PrinterStatus } from './src/types';
 import { discoverAll } from './src/services/discovery';
-import { testConnection, getFiles, getFileContent, jobCommand, jog, home, setToolTemp, setBedTemp, requestAppKey, pollAppKey } from './src/services/octoprint';
+import {
+  testConnection,
+  getFiles,
+  getFileContent,
+  printFile,
+  deleteFile,
+  jobCommand,
+  jog,
+  home,
+  extrude,
+  setToolTemp,
+  setBedTemp,
+  setFanSpeed,
+  disableSteppers,
+  emergencyStop,
+  printerCommand,
+  requestAppKey,
+  pollAppKey,
+} from './src/services/octoprint';
 import { ensurePermissions, sendLocal } from './src/services/notifications';
 
-// Polyfill for crypto if needed
-
-function Header({ title, subtitle, right }: { title: string; subtitle?: string; right?: React.ReactNode }) {
+function Header({
+  title,
+  subtitle,
+  right,
+}: {
+  title: string;
+  subtitle?: string;
+  right?: React.ReactNode;
+}) {
   return (
     <View style={styles.header}>
       <View style={styles.headerLeft}>
-        <View style={styles.logo}><Text style={styles.logoText}>OP</Text></View>
+        <View style={styles.logo}>
+          <Text style={styles.logoText}>OP</Text>
+        </View>
         <View>
-          <Text style={styles.headerTitle}>{title}</Text>
-          {subtitle ? <Text style={styles.headerSubtitle}>{subtitle}</Text> : null}
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {title}
+          </Text>
+          {subtitle ? (
+            <Text style={styles.headerSubtitle} numberOfLines={1}>
+              {subtitle}
+            </Text>
+          ) : null}
         </View>
       </View>
       {right}
@@ -46,9 +76,190 @@ function Header({ title, subtitle, right }: { title: string; subtitle?: string; 
   );
 }
 
-function DashboardScreen({ onSelect, onDiscover }: { onSelect: (p: PrinterConnection)=>void; onDiscover: ()=>void }) {
+// ----------------------------------------------------
+// OctoPrint Application Keys Pairing Modal Component
+// ----------------------------------------------------
+function AppKeysPairingModal({
+  target,
+  visible,
+  onSuccess,
+  onClose,
+}: {
+  target: { host: string; port: number; name?: string; useHttps?: boolean } | null;
+  visible: boolean;
+  onSuccess: (apiKey: string, name: string) => void;
+  onClose: () => void;
+}) {
+  const [step, setStep] = useState<'requesting' | 'waiting' | 'approved' | 'denied' | 'error'>('requesting');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [countdown, setCountdown] = useState(60);
+  const [appToken, setAppToken] = useState<string | null>(null);
+  const pollTimerRef = useRef<any>(null);
+  const countdownTimerRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (!visible || !target) {
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+      if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+      return;
+    }
+
+    let isMounted = true;
+    setStep('requesting');
+    setErrorMessage('');
+    setCountdown(60);
+
+    const startPairing = async () => {
+      try {
+        const res = await requestAppKey(target.host, target.port, 'OctoPulse', target.useHttps);
+        if (!isMounted) return;
+        setAppToken(res.app_token);
+        setStep('waiting');
+
+        let remaining = 60;
+        countdownTimerRef.current = setInterval(() => {
+          remaining -= 1;
+          setCountdown(remaining);
+          if (remaining <= 0) {
+            clearInterval(countdownTimerRef.current);
+            if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+            if (isMounted) {
+              setStep('error');
+              setErrorMessage('Pairing request timed out. Please ensure you approve the request in the OctoPrint browser UI.');
+            }
+          }
+        }, 1000);
+
+        pollTimerRef.current = setInterval(async () => {
+          if (!isMounted) return;
+          try {
+            const pollRes = await pollAppKey(target.host, target.port, res.app_token, target.useHttps);
+            if (pollRes.status === 'approved' && pollRes.api_key) {
+              clearInterval(pollTimerRef.current);
+              clearInterval(countdownTimerRef.current);
+              if (isMounted) {
+                setStep('approved');
+                setTimeout(() => {
+                  onSuccess(pollRes.api_key!, target.name || `OctoPrint @ ${target.host}`);
+                }, 800);
+              }
+            } else if (pollRes.status === 'denied') {
+              clearInterval(pollTimerRef.current);
+              clearInterval(countdownTimerRef.current);
+              if (isMounted) {
+                setStep('denied');
+                setErrorMessage(pollRes.message || 'Access request was denied on the OctoPrint server.');
+              }
+            }
+          } catch (e: any) {
+            // Ignore temporary network glitches during polling
+          }
+        }, 1500);
+      } catch (err: any) {
+        if (!isMounted) return;
+        setStep('error');
+        setErrorMessage(err.message || 'Failed to initiate authorization request with OctoPrint.');
+      }
+    };
+
+    startPairing();
+
+    return () => {
+      isMounted = false;
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+      if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+    };
+  }, [visible, target, onSuccess]);
+
+  if (!visible || !target) return null;
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={styles.modalBackdrop}>
+        <View style={styles.pairingCard}>
+          <View style={styles.pairingHeader}>
+            <Text style={styles.pairingTitle}>Connect to OctoPrint</Text>
+            <Text style={styles.pairingSubtitle}>
+              {target.name || 'OctoPrint Server'} ({target.host}:{target.port})
+            </Text>
+          </View>
+
+          {step === 'requesting' && (
+            <View style={styles.pairingBody}>
+              <ActivityIndicator size="large" color={theme.colors.primary} />
+              <Text style={styles.pairingStatusText}>Sending authorization request to OctoPrint...</Text>
+            </View>
+          )}
+
+          {step === 'waiting' && (
+            <View style={styles.pairingBody}>
+              <View style={styles.pulsingIconWrap}>
+                <Text style={styles.pulsingIcon}>🔔</Text>
+              </View>
+              <Text style={styles.pairingInstructionTitle}>Approve Access on OctoPrint</Text>
+              <Text style={styles.pairingInstructionText}>
+                Open your OctoPrint web interface in your computer or phone browser.
+                {'\n\n'}
+                A popup has appeared at the top asking for access. Click <Text style={{ color: theme.colors.success, fontWeight: '800' }}>ALLOW</Text> or <Text style={{ color: theme.colors.primary, fontWeight: '800' }}>APPROVE</Text>.
+              </Text>
+              <View style={styles.countdownPill}>
+                <ActivityIndicator size="small" color={theme.colors.primary} />
+                <Text style={styles.countdownText}>Waiting for approval ({countdown}s)</Text>
+              </View>
+            </View>
+          )}
+
+          {step === 'approved' && (
+            <View style={styles.pairingBody}>
+              <Text style={styles.successIcon}>✓</Text>
+              <Text style={styles.successTitle}>Connected Successfully!</Text>
+              <Text style={styles.successSub}>Application key granted by OctoPrint.</Text>
+            </View>
+          )}
+
+          {step === 'denied' && (
+            <View style={styles.pairingBody}>
+              <Text style={styles.errorIcon}>✕</Text>
+              <Text style={styles.errorTitle}>Access Denied</Text>
+              <Text style={styles.pairingInstructionText}>{errorMessage}</Text>
+            </View>
+          )}
+
+          {step === 'error' && (
+            <View style={styles.pairingBody}>
+              <Text style={styles.errorIcon}>⚠️</Text>
+              <Text style={styles.errorTitle}>Connection Failed</Text>
+              <Text style={styles.pairingInstructionText}>{errorMessage}</Text>
+              <Text style={styles.hintText}>
+                Make sure the "Application Keys" plugin is enabled in OctoPrint Settings → Application Keys, or enter your API key manually.
+              </Text>
+            </View>
+          )}
+
+          <View style={styles.pairingFooter}>
+            <TouchableOpacity onPress={onClose} style={styles.pairingCancelBtn}>
+              <Text style={styles.pairingCancelText}>{step === 'approved' ? 'Done' : 'Cancel'}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+// ----------------------------------------------------
+// Dashboard Screen Component
+// ----------------------------------------------------
+function DashboardScreen({
+  onSelect,
+  onDiscover,
+}: {
+  onSelect: (p: PrinterConnection) => void;
+  onDiscover: () => void;
+}) {
   const { printers, statuses, loading, removePrinter, refreshStatuses } = usePrinters();
   const [refreshing, setRefreshing] = useState(false);
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await refreshStatuses();
@@ -56,140 +267,172 @@ function DashboardScreen({ onSelect, onDiscover }: { onSelect: (p: PrinterConnec
   }, [refreshStatuses]);
 
   if (loading) {
-    return <View style={styles.center}><ActivityIndicator color={theme.colors.primary} size="large" /><Text style={styles.muted}>Loading printers...</Text></View>;
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator color={theme.colors.primary} size="large" />
+        <Text style={styles.muted}>Loading printers...</Text>
+      </View>
+    );
   }
 
+  const printingCount = Object.values(statuses).filter(s => s?.stateFlags?.printing).length;
+  const onlineCount = Object.values(statuses).filter(s => s?.stateFlags?.operational).length;
+
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={{ padding: 16, paddingBottom: 100 }} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />}>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />}>
       <View style={styles.hero}>
         <Text style={styles.heroTitle}>OctoPulse</Text>
-        <Text style={styles.heroSub}>Monitor - Control - Print</Text>
+        <Text style={styles.heroSub}>MONITOR • CONTROL • PRINT</Text>
         <View style={styles.heroStats}>
-          <View style={styles.stat}><Text style={styles.statNum}>{printers.length}</Text><Text style={styles.statLabel}>Printers</Text></View>
+          <View style={styles.stat}>
+            <Text style={styles.statNum}>{printers.length}</Text>
+            <Text style={styles.statLabel}>PRINTERS</Text>
+          </View>
           <View style={styles.statDivider} />
-          <View style={styles.stat}><Text style={styles.statNum}>{Object.values(statuses).filter(s=> s.stateFlags?.printing).length}</Text><Text style={styles.statLabel}>Printing</Text></View>
+          <View style={styles.stat}>
+            <Text style={styles.statNum}>{printingCount}</Text>
+            <Text style={styles.statLabel}>PRINTING</Text>
+          </View>
           <View style={styles.statDivider} />
-          <View style={styles.stat}><Text style={styles.statNum}>{Object.values(statuses).filter(s=> s.stateFlags?.operational).length}</Text><Text style={styles.statLabel}>Online</Text></View>
+          <View style={styles.stat}>
+            <Text style={styles.statNum}>{onlineCount}</Text>
+            <Text style={styles.statLabel}>ONLINE</Text>
+          </View>
         </View>
       </View>
 
-      {printers.length===0 ? (
+      {printers.length === 0 ? (
         <View style={styles.empty}>
-          <Text style={styles.emptyIcon}>Printer</Text>
-          <Text style={styles.emptyTitle}>No printers yet</Text>
-          <Text style={styles.emptySub}>Auto-discover OctoPrint servers on your Wi-Fi or add manually with IP + API key.</Text>
-          <TouchableOpacity onPress={onDiscover} style={styles.primaryBtn}><Text style={styles.primaryBtnText}> Discover Printers</Text></TouchableOpacity>
-          <Text style={styles.hintText}>Tip: Find API key in OctoPrint  ->  Settings  ->  API</Text>
+          <Text style={styles.emptyIcon}>🖨️</Text>
+          <Text style={styles.emptyTitle}>No printers connected</Text>
+          <Text style={styles.emptySub}>
+            Auto-discover OctoPrint servers on your Wi-Fi network with 1-click authorization approval.
+          </Text>
+          <TouchableOpacity onPress={onDiscover} style={styles.primaryBtn}>
+            <Text style={styles.primaryBtnText}>🔍 Discover Printers on Wi-Fi</Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Your Printers</Text>
-            <TouchableOpacity onPress={onDiscover} style={styles.smallBtn}><Text style={styles.smallBtnText}>+ Add</Text></TouchableOpacity>
+            <Text style={styles.sectionTitle}>Your Printers ({printers.length})</Text>
+            <TouchableOpacity onPress={onDiscover} style={styles.smallBtn}>
+              <Text style={styles.smallBtnText}>+ Add Printer</Text>
+            </TouchableOpacity>
           </View>
           {printers.map(p => (
-            <PrinterCard key={p.id} printer={p} status={statuses[p.id]} onPress={()=> onSelect(p)} onLongPress={()=>{
-              Alert.alert(p.name, `${p.host}:${p.port}`, [
-                { text:'Cancel', style:'cancel' },
-                { text:'Remove', style:'destructive', onPress:()=> removePrinter(p.id) }
-              ]);
-            }} />
+            <PrinterCard
+              key={p.id}
+              printer={p}
+              status={statuses[p.id]}
+              onPress={() => onSelect(p)}
+              onLongPress={() => {
+                Alert.alert(p.name, `${p.host}:${p.port}`, [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Remove Printer', style: 'destructive', onPress: () => removePrinter(p.id) },
+                ]);
+              }}
+            />
           ))}
         </>
       )}
 
       <View style={styles.infoCard}>
-        <Text style={styles.infoTitle}>OctoPrint Features</Text>
-        <Text style={styles.infoText}>- Auto-discovery (mDNS / SSDP / IP scan){"\n"}- Live progress, temps, camera, GCode{"\n"}- Pause / Cancel / Jog / Home{"\n"}- Files browser + viewer{"\n"}- Local notifications</Text>
+        <Text style={styles.infoTitle}>OctoPulse Pro Features</Text>
+        <Text style={styles.infoText}>
+          • Zero-Key Auto-Approval via OctoPrint Application Keys{'\n'}
+          • Hardware-Accelerated 30+ FPS MJPEG Live Camera Stream{'\n'}
+          • Multi-Axis Jogging, Extruder, Fan, and Temperature Control{'\n'}
+          • Live 2D & 3D Layer G-Code Visualizer{'\n'}
+          • Interactive G-Code Terminal Console & File Management
+        </Text>
       </View>
     </ScrollView>
   );
 }
 
-function DiscoverScreen({ onAdded, onClose }: { onAdded: ()=>void; onClose: ()=>void }) {
+// ----------------------------------------------------
+// Discover / Add Screen Component
+// ----------------------------------------------------
+function DiscoverScreen({ onAdded, onClose }: { onAdded: () => void; onClose: () => void }) {
   const { addPrinter } = usePrinters();
+  const { show: showInterstitial } = useInterstitial();
   const [results, setResults] = useState<DiscoveryResult[]>([]);
   const [scanning, setScanning] = useState(false);
-  const [manual, setManual] = useState({ name:'', host:'', port:'5000', apiKey:'', useHttps:false });
+  const [manual, setManual] = useState({ name: '', host: '', port: '5000', apiKey: '', useHttps: false });
   const [testing, setTesting] = useState(false);
+  const [pairingTarget, setPairingTarget] = useState<{ host: string; port: number; name?: string; useHttps?: boolean } | null>(null);
 
   const startScan = async () => {
     setScanning(true);
     setResults([]);
     try {
-      const found = await discoverAll((r: DiscoveryResult)=> setResults(prev=> [...prev, r]));
+      const found = await discoverAll((r: DiscoveryResult) => setResults(prev => [...prev, r]));
       setResults(found);
-      if (found.length===0) Alert.alert('No servers found', 'Try manual add or check Wi-Fi. OctoPrint usually on port 5000 or 80.');
-    } catch (e:any) { Alert.alert('Scan failed', e.message); }
+      if (found.length === 0) {
+        Alert.alert('No servers discovered', 'Could not find OctoPrint automatically. You can add it manually using IP address.');
+      }
+    } catch (e: any) {
+      Alert.alert('Scan failed', e.message);
+    }
     setScanning(false);
   };
 
-  useEffect(()=> { startScan(); }, []);
+  useEffect(() => {
+    startScan();
+  }, []);
 
-  const addFromDiscovery = async (d: DiscoveryResult) => {
-    // If we have an API key, use it directly
-    if (manual.apiKey) {
-      const p: PrinterConnection = {
-        id: `p_${Date.now()}`,
-        name: manual.name || d.name || `OctoPrint ${d.host}`,
-        host: d.host,
-        port: d.port,
-        useHttps: false,
-        apiKey: manual.apiKey,
-        createdAt: Date.now(),
-      };
-      setTesting(true);
-      try {
-        await testConnection(p);
-        await addPrinter(p);
-        showInterstitial();
-        Alert.alert('Added!', `${p.name} is now monitored.`);
-        onAdded();
-      } catch (e:any) { Alert.alert('Connection failed', e.message + '\nCheck API key & network'); }
-      setTesting(false);
-      return;
-    }
-    // No API key - try Application Keys plugin automatically
-    const host = d.host;
-    const port = d.port;
-    setTesting(true);
+  const handlePairingSuccess = async (apiKey: string, name: string) => {
+    if (!pairingTarget) return;
+    const p: PrinterConnection = {
+      id: `p_${Date.now()}`,
+      name: manual.name || name || `OctoPrint @ ${pairingTarget.host}`,
+      host: pairingTarget.host,
+      port: pairingTarget.port,
+      useHttps: !!pairingTarget.useHttps,
+      apiKey,
+      createdAt: Date.now(),
+    };
     try {
-      const { app_token } = await requestAppKey(host, port, 'OctoPulse', false);
-      Alert.alert('Approve on OctoPrint', 'OctoPulse requested access - Please tap APPROVE in your OctoPrint web UI (popup at top). Waiting 30 seconds...');
-      let apiKey: string | null = null;
-      for(let i=0;i<15;i++){
-        await new Promise(r=> setTimeout(r,2000));
-        const res = await pollAppKey(host, port, app_token, false).catch(()=>null);
-        if (res && res.api_key) { apiKey = res.api_key; break; }
-      }
-      if (!apiKey) throw new Error('Not approved in time - please approve on OctoPrint and try again, or enter API key manually from OctoPrint Settings -> Application Keys');
-      const p2: PrinterConnection = {
-        id: `p_${Date.now()}`,
-        name: manual.name || d.name || `OctoPrint ${d.host}`,
-        host, port, useHttps: false, apiKey, createdAt: Date.now(),
-      };
-      await testConnection(p2);
-      await addPrinter(p2);
+      await testConnection(p);
+      await addPrinter(p);
+      setPairingTarget(null);
       showInterstitial();
-      Alert.alert('Added!', `${p2.name} approved and added automatically!`);
+      Alert.alert('Connected & Added!', `${p.name} is now connected.`);
       onAdded();
-    } catch (e:any) {
-      Alert.alert('Auto-approve failed', e.message + '\n\nFallback: Enter API key manually from OctoPrint Settings -> API, or enable Application Keys plugin (Settings -> Application Keys) and try Request Access button below.');
+    } catch (err: any) {
+      Alert.alert('Connection check failed', err.message);
     }
-    setTesting(false);
+  };
+
+  const addFromDiscovery = (d: DiscoveryResult) => {
+    setPairingTarget({ host: d.host, port: d.port, name: d.name, useHttps: false });
   };
 
   const addManual = async () => {
-    if (!manual.host || !manual.apiKey) { Alert.alert('Missing', 'Host and API Key required'); return; }
-    const host = manual.host.replace(/^https?:\/\//,'').split(':')[0].split('/')[0];
-    const port = parseInt(manual.port) || 5000;
+    if (!manual.host) {
+      Alert.alert('Host Required', 'Please enter OctoPrint Host or IP address.');
+      return;
+    }
+    const cleanHost = manual.host.replace(/^https?:\/\//, '').split(':')[0].split('/')[0];
+    const port = parseInt(manual.port, 10) || (manual.useHttps ? 443 : 5000);
+
+    if (!manual.apiKey) {
+      // Trigger application keys approval flow for manual host
+      setPairingTarget({ host: cleanHost, port, name: manual.name, useHttps: manual.useHttps });
+      return;
+    }
+
     const p: PrinterConnection = {
       id: `p_${Date.now()}`,
-      name: manual.name || `OctoPrint ${host}`,
-      host,
+      name: manual.name || `OctoPrint @ ${cleanHost}`,
+      host: cleanHost,
       port,
       useHttps: manual.useHttps,
-      apiKey: manual.apiKey,
+      apiKey: manual.apiKey.trim(),
       createdAt: Date.now(),
     };
     setTesting(true);
@@ -197,213 +440,724 @@ function DiscoverScreen({ onAdded, onClose }: { onAdded: ()=>void; onClose: ()=>
       await testConnection(p);
       await addPrinter(p);
       showInterstitial();
-      Alert.alert('Added!', `${p.name} connected`);
+      Alert.alert('Added!', `${p.name} connected successfully.`);
       onAdded();
-    } catch (e:any) { Alert.alert('Failed', e.message); }
+    } catch (e: any) {
+      Alert.alert('Connection Failed', e.message);
+    }
     setTesting(false);
   };
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={{ padding:16, paddingBottom:100 }}>
-      <Header title="Add Printer" subtitle="Auto-discover or manual" right={<TouchableOpacity onPress={onClose} style={styles.iconBtn}><Text style={styles.iconBtnText}></Text></TouchableOpacity>} />
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Manual Entry</Text>
-        <Text style={styles.label}>Name (optional)</Text>
-        <TextInput style={styles.input} placeholder="My Ender 3" placeholderTextColor={theme.colors.textDim} value={manual.name} onChangeText={v=> setManual({...manual, name:v})} />
-        <Text style={styles.label}>Host / IP *</Text>
-        <TextInput style={styles.input} placeholder="192.168.1.42 or octopi.local" placeholderTextColor={theme.colors.textDim} value={manual.host} onChangeText={v=> setManual({...manual, host:v})} autoCapitalize="none" autoCorrect={false} />
-        <View style={{ flexDirection:'row', gap:10 }}>
-          <View style={{ flex:1 }}><Text style={styles.label}>Port</Text><TextInput style={styles.input} placeholder="5000" keyboardType="number-pad" value={manual.port} onChangeText={v=> setManual({...manual, port:v})} /></View>
-          <View style={{ flex:1 }}><Text style={styles.label}>HTTPS</Text><View style={styles.switchRow}><Text style={styles.switchLabel}>{manual.useHttps ? 'Yes' : 'No'}</Text><Switch value={manual.useHttps} onValueChange={v=> setManual({...manual, useHttps:v})} trackColor={{ true: theme.colors.primary }} /></View></View>
-        </View>
-        <Text style={styles.label}>API Key *</Text>
-        <TextInput style={styles.input} placeholder="Paste from OctoPrint  ->  Settings  ->  API" placeholderTextColor={theme.colors.textDim} value={manual.apiKey} onChangeText={v=> setManual({...manual, apiKey:v})} autoCapitalize="none" secureTextEntry />
-        <TouchableOpacity onPress={async ()=> {
-          if (!manual.host) { Alert.alert('Host required','Enter Host/IP first'); return; }
-          const host = manual.host.replace(/^https?:\/\//,'').split(':')[0].split('/')[0];
-          const port = parseInt(manual.port)||5000;
-          setTesting(true);
-          try {
-            const { app_token } = await requestAppKey(host, port, 'OctoPulse', manual.useHttps);
-            Alert.alert('Approve on OctoPrint','Please tap APPROVE on your OctoPrint web UI (a popup should appear) then wait 15 seconds and the app will finish automatically.');
-            for(let i=0;i<15;i++){
-              await new Promise(r=> setTimeout(r,2000));
-              const res = await pollAppKey(host, port, app_token, manual.useHttps).catch(()=>null);
-              if (res && res.api_key) {
-                setManual({...manual, apiKey: res.api_key});
-                Alert.alert('Approved!','API key received automatically. Tap Add Manually to finish.');
-                break;
-              }
-            }
-          } catch(e:any){ Alert.alert('Request failed', e.message + ' - Try manual API key or enable Application Keys plugin in OctoPrint Settings -> Application Keys'); }
-          setTesting(false);
-        }} disabled={testing} style={[styles.smallBtn, { marginTop:8, backgroundColor: theme.colors.accent }]}><Text style={styles.smallBtnText}>Request Access Automatically (No API Key Needed)</Text></TouchableOpacity>
-        <TouchableOpacity onPress={addManual} disabled={testing} style={[styles.primaryBtn, testing && { opacity:0.6 }]}>
-          {testing ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}> Add Manually & Test</Text>}
-        </TouchableOpacity>
-      </View>
+    <ScrollView style={styles.screen} contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
+      <Header
+        title="Add OctoPrint Server"
+        subtitle="Auto-discovery or manual entry"
+        right={
+          <TouchableOpacity onPress={onClose} style={styles.iconBtn}>
+            <Text style={styles.iconBtnText}>✕ Close</Text>
+          </TouchableOpacity>
+        }
+      />
 
       <View style={styles.card}>
         <View style={styles.rowBetween}>
-          <Text style={styles.cardTitle}>Discovered ({results.length})</Text>
-          <TouchableOpacity onPress={startScan} disabled={scanning} style={styles.smallBtn}><Text style={styles.smallBtnText}>{scanning ? 'Scanning...' : ' Rescan'}</Text></TouchableOpacity>
+          <Text style={styles.cardTitle}>Discovered on Local Network ({results.length})</Text>
+          <TouchableOpacity onPress={startScan} disabled={scanning} style={styles.smallBtn}>
+            <Text style={styles.smallBtnText}>{scanning ? 'Scanning...' : '↻ Rescan'}</Text>
+          </TouchableOpacity>
         </View>
-        {scanning && <View style={{ flexDirection:'row', gap:8, alignItems:'center', marginTop:8 }}><ActivityIndicator color={theme.colors.primary} /><Text style={styles.muted}>Scanning subnet 254 hosts  4 ports...</Text></View>}
-        {results.length===0 && !scanning ? <Text style={styles.muted}>No servers found. Ensure OctoPrint and phone are on same Wi-Fi.</Text> : null}
-        {results.map((r,i)=> (
-          <TouchableOpacity key={`${r.host}:${r.port}_${i}`} onPress={()=> addFromDiscovery(r)} style={styles.discoverRow}>
-            <View style={styles.discoverIcon}><Text style={{ fontSize:18 }}>Printer</Text></View>
-            <View style={{ flex:1 }}>
-              <Text style={styles.discoverName}>{r.name}</Text>
-              <Text style={styles.discoverSub}>{r.host}:{r.port} - {r.via} {r.version? `- ${r.version}`:''}</Text>
+
+        {scanning && (
+          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', marginTop: 10 }}>
+            <ActivityIndicator color={theme.colors.primary} />
+            <Text style={styles.muted}>Scanning local subnet for OctoPrint instances...</Text>
+          </View>
+        )}
+
+        {results.length === 0 && !scanning && (
+          <Text style={[styles.muted, { marginTop: 8 }]}>
+            No servers detected yet. Ensure your phone and OctoPrint are connected to the same Wi-Fi network.
+          </Text>
+        )}
+
+        {results.map((r, i) => (
+          <TouchableOpacity
+            key={`${r.host}:${r.port}_${i}`}
+            onPress={() => addFromDiscovery(r)}
+            style={styles.discoverRow}
+            activeOpacity={0.8}>
+            <View style={styles.discoverIcon}>
+              <Text style={{ fontSize: 20 }}>🖨️</Text>
             </View>
-            <Text style={styles.discoverAdd}>Add  -> </Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.discoverName}>{r.name || `OctoPrint @ ${r.host}`}</Text>
+              <Text style={styles.discoverSub}>
+                {r.host}:{r.port} • {r.via}
+              </Text>
+            </View>
+            <View style={styles.pairBtnBadge}>
+              <Text style={styles.pairBtnText}>Pair & Connect →</Text>
+            </View>
           </TouchableOpacity>
         ))}
-        <Text style={styles.hintText}>Tip: Tap a discovered server after entering API key above to add instantly. Interstitial ad will show on add (test).</Text>
       </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Manual Configuration</Text>
+        <Text style={styles.label}>Printer Name (Optional)</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="e.g. Ender 3 V2 / Prusa MK4"
+          placeholderTextColor={theme.colors.textDim}
+          value={manual.name}
+          onChangeText={v => setManual({ ...manual, name: v })}
+        />
+
+        <Text style={styles.label}>Host / IP Address *</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="192.168.1.50 or octopi.local"
+          placeholderTextColor={theme.colors.textDim}
+          value={manual.host}
+          onChangeText={v => setManual({ ...manual, host: v })}
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.label}>Port</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="5000"
+              keyboardType="number-pad"
+              value={manual.port}
+              onChangeText={v => setManual({ ...manual, port: v })}
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.label}>HTTPS</Text>
+            <View style={styles.switchRow}>
+              <Text style={styles.switchLabel}>{manual.useHttps ? 'Yes' : 'No'}</Text>
+              <Switch
+                value={manual.useHttps}
+                onValueChange={v => setManual({ ...manual, useHttps: v })}
+                trackColor={{ true: theme.colors.primary }}
+              />
+            </View>
+          </View>
+        </View>
+
+        <Text style={styles.label}>API Key (Leave blank for 1-Click Server Approval)</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Optional: Paste key from OctoPrint Settings → API"
+          placeholderTextColor={theme.colors.textDim}
+          value={manual.apiKey}
+          onChangeText={v => setManual({ ...manual, apiKey: v })}
+          autoCapitalize="none"
+          secureTextEntry
+        />
+
+        <TouchableOpacity
+          onPress={addManual}
+          disabled={testing}
+          style={[styles.primaryBtn, testing && { opacity: 0.6 }]}>
+          {testing ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.primaryBtnText}>
+              {manual.apiKey ? 'Connect with API Key' : '⚡ 1-Click Request Access & Connect'}
+            </Text>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      <AppKeysPairingModal
+        target={pairingTarget}
+        visible={!!pairingTarget}
+        onSuccess={handlePairingSuccess}
+        onClose={() => setPairingTarget(null)}
+      />
     </ScrollView>
   );
 }
 
-function PrinterDetail({ printer, onBack }: { printer: PrinterConnection; onBack: ()=>void }) {
-  const { statuses, refreshStatuses } = usePrinters();
+// ----------------------------------------------------
+// Printer Detail & Control Screen Component
+// ----------------------------------------------------
+function PrinterDetail({ printer, onBack }: { printer: PrinterConnection; onBack: () => void }) {
+  const { statuses, refreshStatuses, settings, updateSettings, updatePrinter } = usePrinters();
   const status = statuses[printer.id];
-  const [tab, setTab] = useState<'status'|'control'|'camera'|'files'|'gcode'>('status');
+  const [tab, setTab] = useState<'overview' | 'control' | 'files' | 'terminal' | 'alerts'>('overview');
   const [files, setFiles] = useState<any[]>([]);
   const [filesLoading, setFilesLoading] = useState(false);
   const [gcodeText, setGcodeText] = useState<string>('');
   const [gcodeLoading, setGcodeLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [jogStep, setJogStep] = useState<number>(10);
+  const [extrudeAmount, setExtrudeAmount] = useState<number>(10);
+  const [gcodeCommand, setGcodeCommand] = useState('');
+  const [terminalLogs, setTerminalLogs] = useState<{ time: string; text: string; type: 'cmd' | 'resp' }[]>([]);
 
   const loadFiles = useCallback(async () => {
     setFilesLoading(true);
     try {
       const res = await getFiles(printer);
       setFiles(res.files || []);
-    } catch (e:any) { }
+    } catch (e: any) {}
     setFilesLoading(false);
   }, [printer]);
 
-  useEffect(()=> { if (tab==='files') loadFiles(); }, [tab, loadFiles]);
+  useEffect(() => {
+    if (tab === 'files') loadFiles();
+  }, [tab, loadFiles]);
 
   const handleJob = async (cmd: string) => {
     try {
-      if (cmd==='cancel' && !confirmAction('Cancel print?')) return;
+      if (cmd === 'cancel') {
+        Alert.alert('Cancel Print?', `Are you sure you want to stop the print on ${printer.name}?`, [
+          { text: 'No, Keep Printing', style: 'cancel' },
+          {
+            text: 'Yes, Cancel Print',
+            style: 'destructive',
+            onPress: async () => {
+              await jobCommand(printer, 'cancel');
+              await refreshStatuses();
+              Alert.alert('Print Cancelled', `Print on ${printer.name} has been stopped.`);
+            },
+          },
+        ]);
+        return;
+      }
       await jobCommand(printer, cmd);
       await refreshStatuses();
-      // show interstitial placeholder
-      Alert.alert('Command sent', `${cmd}  ->  ${printer.name}`);
-    } catch (e:any) { Alert.alert('Failed', e.message); }
+      Alert.alert('Command Sent', `${cmd.toUpperCase()} command executed.`);
+    } catch (e: any) {
+      Alert.alert('Error', e.message);
+    }
+  };
+
+  const handleEmergencyStop = () => {
+    Alert.alert('EMERGENCY STOP', `Trigger immediate emergency shutdown (M112) on ${printer.name}?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'EMERGENCY STOP',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await emergencyStop(printer);
+            await refreshStatuses();
+            Alert.alert('Emergency Stop Sent', 'M112 Emergency stop signal sent.');
+          } catch (e: any) {
+            Alert.alert('Error', e.message);
+          }
+        },
+      },
+    ]);
+  };
+
+  const handlePrintFile = (path: string, fileName: string) => {
+    Alert.alert('Start Print', `Start printing "${fileName}" on ${printer.name}?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Start Print',
+        onPress: async () => {
+          try {
+            await printFile(printer, path);
+            await refreshStatuses();
+            setTab('overview');
+            Alert.alert('Print Started', `Printing "${fileName}"`);
+          } catch (e: any) {
+            Alert.alert('Failed to start print', e.message);
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleDeleteFile = (path: string, fileName: string) => {
+    Alert.alert('Delete File', `Delete "${fileName}" from OctoPrint?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteFile(printer, path);
+            await loadFiles();
+            Alert.alert('File Deleted', `Deleted "${fileName}"`);
+          } catch (e: any) {
+            Alert.alert('Delete Failed', e.message);
+          }
+        },
+      },
+    ]);
   };
 
   const loadGCode = async (path: string) => {
+    if (!path) return;
     setGcodeLoading(true);
     try {
       const txt = await getFileContent(printer, path);
       setGcodeText(txt);
       setSelectedFile(path);
-      setTab('gcode');
-    } catch (e:any) { Alert.alert('Failed', e.message); }
+    } catch (e: any) {
+      Alert.alert('Failed to load GCode', e.message);
+    }
     setGcodeLoading(false);
   };
 
+  const handleSendTerminalGcode = async (cmd?: string) => {
+    const toSend = (cmd || gcodeCommand).trim();
+    if (!toSend) return;
+    const timeStr = new Date().toLocaleTimeString();
+    setTerminalLogs(prev => [...prev, { time: timeStr, text: `> ${toSend}`, type: 'cmd' }]);
+    if (!cmd) setGcodeCommand('');
+
+    try {
+      await printerCommand(printer, toSend);
+      setTerminalLogs(prev => [...prev, { time: new Date().toLocaleTimeString(), text: `ok (command executed)`, type: 'resp' }]);
+    } catch (e: any) {
+      setTerminalLogs(prev => [...prev, { time: new Date().toLocaleTimeString(), text: `error: ${e.message}`, type: 'resp' }]);
+    }
+  };
+
   const isPrinting = status?.stateFlags?.printing;
+  const isPaused = status?.stateFlags?.paused;
+  const completion = status?.job?.progress?.completion || 0;
 
   return (
     <View style={styles.screen}>
-      <Header title={printer.name} subtitle={`${printer.host}:${printer.port} - ${status?.state || '...'} `} right={<TouchableOpacity onPress={onBack} style={styles.iconBtn}><Text style={styles.iconBtnText}> Back</Text></TouchableOpacity>} />
-      {/* Progress hero */}
-      <ScrollView contentContainerStyle={{ padding:16, paddingBottom:100 }}>
+      <Header
+        title={printer.name}
+        subtitle={`${printer.host}:${printer.port} • ${status?.state || 'Checking...'}`}
+        right={
+          <TouchableOpacity onPress={onBack} style={styles.iconBtn}>
+            <Text style={styles.iconBtnText}>← Back</Text>
+          </TouchableOpacity>
+        }
+      />
+
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
+        {/* Detail Hero Card */}
         <View style={styles.detailHero}>
-          <View style={{ flex:1 }}>
-            <Text style={styles.detailFile} numberOfLines={2}>{status?.job.file?.display || 'No file loaded'}</Text>
-            <Text style={styles.detailProgress}>{status?.job.progress.completion ? `${status.job.progress.completion.toFixed(1)}%` : '0%'} - {isPrinting ? 'Printing' : status?.state}</Text>
-            <View style={styles.progressBar}><View style={[styles.progressFill, { width: `${Math.min(100, status?.job.progress.completion||0)}%`}]} /></View>
-            <Text style={styles.detailTime}>{status?.job.progress.printTime ? `${Math.floor(status.job.progress.printTime/60)}m elapsed` : ''} {status?.job.progress.printTimeLeft ? `- ${Math.floor(status.job.progress.printTimeLeft/60)}m left` : ''}</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.detailFile} numberOfLines={2}>
+              {status?.job?.file?.display || status?.job?.file?.name || 'No file loaded'}
+            </Text>
+            <Text style={styles.detailProgress}>
+              {completion ? `${completion.toFixed(1)}%` : '0%'} • {isPrinting ? 'Printing' : isPaused ? 'Paused' : status?.state || 'Idle'}
+            </Text>
+            <View style={styles.progressBar}>
+              <View style={[styles.progressFill, { width: `${Math.min(100, completion)}%` }]} />
+            </View>
+            <Text style={styles.detailTime}>
+              {status?.job?.progress?.printTime ? `${Math.floor(status.job.progress.printTime / 60)}m elapsed` : ''}
+              {status?.job?.progress?.printTimeLeft ? ` • ${Math.floor(status.job.progress.printTimeLeft / 60)}m remaining` : ''}
+            </Text>
           </View>
           <View style={styles.detailTemps}>
-            <View style={styles.miniTemp}><Text style={styles.miniTempLabel}>Nozzle</Text><Text style={styles.miniTempVal}>{status?.temps.tool0 ? `${Math.round(status.temps.tool0.actual)}/${Math.round(status.temps.tool0.target)}` : '--'}</Text></View>
-            <View style={styles.miniTemp}><Text style={styles.miniTempLabel}>Bed</Text><Text style={styles.miniTempVal}>{status?.temps.bed ? `${Math.round(status.temps.bed.actual)}/${Math.round(status.temps.bed.target)}` : '--'}</Text></View>
+            <View style={styles.miniTemp}>
+              <Text style={styles.miniTempLabel}>NOZZLE</Text>
+              <Text style={styles.miniTempVal}>
+                {status?.temps?.tool0 ? `${Math.round(status.temps.tool0.actual)} / ${Math.round(status.temps.tool0.target)}°` : '--'}
+              </Text>
+            </View>
+            <View style={styles.miniTemp}>
+              <Text style={styles.miniTempLabel}>BED</Text>
+              <Text style={styles.miniTempVal}>
+                {status?.temps?.bed ? `${Math.round(status.temps.bed.actual)} / ${Math.round(status.temps.bed.target)}°` : '--'}
+              </Text>
+            </View>
           </View>
         </View>
 
+        {/* Tab Navigation */}
         <View style={styles.tabs}>
-          {(['status','control','camera','files','gcode'] as const).map(t=> (
-            <TouchableOpacity key={t} onPress={()=> setTab(t)} style={[styles.tab, tab===t && styles.tabActive]}><Text style={[styles.tabText, tab===t && styles.tabTextActive]}>{t.toUpperCase()}</Text></TouchableOpacity>
+          {([
+            { k: 'overview', label: 'OVERVIEW' },
+            { k: 'control', label: 'CONTROL' },
+            { k: 'files', label: 'FILES' },
+            { k: 'terminal', label: 'TERMINAL' },
+            { k: 'alerts', label: 'ALERTS' },
+          ] as const).map(t => (
+            <TouchableOpacity
+              key={t.k}
+              onPress={() => setTab(t.k as any)}
+              style={[styles.tab, tab === t.k && styles.tabActive]}>
+              <Text style={[styles.tabText, tab === t.k && styles.tabTextActive]}>{t.label}</Text>
+            </TouchableOpacity>
           ))}
         </View>
 
-        {tab==='status' && (
-          <View style={{ gap:12 }}>
-            <View style={styles.grid2}>
-              <View style={styles.statCard}><Text style={styles.statCardLabel}>State</Text><Text style={styles.statCardVal}>{status?.state || ''}</Text></View>
-              <View style={styles.statCard}><Text style={styles.statCardLabel}>File Size</Text><Text style={styles.statCardVal}>{status?.job.file?.size ? `${(status.job.file.size/1024).toFixed(1)} KB` : ''}</Text></View>
-              <View style={styles.statCard}><Text style={styles.statCardLabel}>Print Time</Text><Text style={styles.statCardVal}>{status?.job.progress.printTime ? `${(status.job.progress.printTime/60).toFixed(1)}m` : ''}</Text></View>
-              <View style={styles.statCard}><Text style={styles.statCardLabel}>Filament</Text><Text style={styles.statCardVal}>{status?.job.filament?.length ? `${(status.job.filament.length/1000).toFixed(2)}m` : ''}</Text></View>
-            </View>
+        {/* OVERVIEW TAB */}
+        {tab === 'overview' && (
+          <View style={{ gap: 12 }}>
+            <CameraView printer={printer} status={status} />
+
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>Controls</Text>
+              <Text style={styles.cardTitle}>Print Job Actions</Text>
               <View style={styles.btnGrid}>
-                <TouchableOpacity onPress={()=> handleJob('pause')} style={[styles.controlBtn, { backgroundColor: theme.colors.warning }]}><Text style={styles.controlBtnText}> Pause</Text></TouchableOpacity>
-                <TouchableOpacity onPress={()=> handleJob('resume')} style={[styles.controlBtn, { backgroundColor: theme.colors.success }]}><Text style={styles.controlBtnText}> Resume</Text></TouchableOpacity>
-                <TouchableOpacity onPress={()=> handleJob('cancel')} style={[styles.controlBtn, { backgroundColor: theme.colors.error }]}><Text style={styles.controlBtnText}> Cancel</Text></TouchableOpacity>
-                <TouchableOpacity onPress={refreshStatuses} style={[styles.controlBtn, { backgroundColor: theme.colors.primary }]}><Text style={styles.controlBtnText}> Refresh</Text></TouchableOpacity>
+                {isPrinting ? (
+                  <TouchableOpacity
+                    onPress={() => handleJob('pause')}
+                    style={[styles.controlBtn, { backgroundColor: theme.colors.warning }]}>
+                    <Text style={styles.controlBtnText}>⏸ Pause Print</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    onPress={() => handleJob('resume')}
+                    style={[styles.controlBtn, { backgroundColor: theme.colors.success }]}>
+                    <Text style={styles.controlBtnText}>▶ Resume Print</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  onPress={() => handleJob('cancel')}
+                  style={[styles.controlBtn, { backgroundColor: theme.colors.error }]}>
+                  <Text style={styles.controlBtnText}>■ Cancel Print</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={refreshStatuses}
+                  style={[styles.controlBtn, { backgroundColor: theme.colors.primary }]}>
+                  <Text style={styles.controlBtnText}>↻ Refresh State</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleEmergencyStop}
+                  style={[styles.controlBtn, { backgroundColor: '#b91c1c' }]}>
+                  <Text style={styles.controlBtnText}>⛔ Emergency Stop</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.grid2}>
+              <View style={styles.statCard}>
+                <Text style={styles.statCardLabel}>STATE</Text>
+                <Text style={styles.statCardVal}>{status?.state || '—'}</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Text style={styles.statCardLabel}>FILE SIZE</Text>
+                <Text style={styles.statCardVal}>
+                  {status?.job?.file?.size ? `${(status.job.file.size / 1024).toFixed(1)} KB` : '—'}
+                </Text>
+              </View>
+              <View style={styles.statCard}>
+                <Text style={styles.statCardLabel}>PRINT TIME</Text>
+                <Text style={styles.statCardVal}>
+                  {status?.job?.progress?.printTime ? `${(status.job.progress.printTime / 60).toFixed(1)}m` : '—'}
+                </Text>
+              </View>
+              <View style={styles.statCard}>
+                <Text style={styles.statCardLabel}>FILAMENT</Text>
+                <Text style={styles.statCardVal}>
+                  {status?.job?.filament?.length ? `${(status.job.filament.length / 1000).toFixed(2)}m` : '—'}
+                </Text>
               </View>
             </View>
           </View>
         )}
 
-        {tab==='control' && (
-          <View style={{ gap:12 }}>
+        {/* CONTROL TAB */}
+        {tab === 'control' && (
+          <View style={{ gap: 12 }}>
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>Movement</Text>
-              <View style={styles.jogGrid}>
-                <TouchableOpacity onPress={()=> jog(printer,'y',10)} style={styles.jogBtn}><Text style={styles.jogText}>Y+</Text></TouchableOpacity>
-                <TouchableOpacity onPress={()=> jog(printer,'x',-10)} style={styles.jogBtn}><Text style={styles.jogText}>X-</Text></TouchableOpacity>
-                <TouchableOpacity onPress={()=> home(printer,['x','y','z'])} style={[styles.jogBtn,{backgroundColor: theme.colors.accent}]}><Text style={styles.jogText}> Home</Text></TouchableOpacity>
-                <TouchableOpacity onPress={()=> jog(printer,'x',10)} style={styles.jogBtn}><Text style={styles.jogText}>X+</Text></TouchableOpacity>
-                <TouchableOpacity onPress={()=> jog(printer,'y',-10)} style={styles.jogBtn}><Text style={styles.jogText}>Y-</Text></TouchableOpacity>
-                <TouchableOpacity onPress={()=> jog(printer,'z',10)} style={styles.jogBtn}><Text style={styles.jogText}>Z+</Text></TouchableOpacity>
-                <TouchableOpacity onPress={()=> home(printer,['z'])} style={styles.jogBtn}><Text style={styles.jogText}>Z Home</Text></TouchableOpacity>
-                <TouchableOpacity onPress={()=> jog(printer,'z',-10)} style={styles.jogBtn}><Text style={styles.jogText}>Z-</Text></TouchableOpacity>
+              <View style={styles.rowBetween}>
+                <Text style={styles.cardTitle}>Movement & Jog</Text>
+                <TouchableOpacity
+                  onPress={async () => {
+                    await disableSteppers(printer);
+                    Alert.alert('Motors Disabled', 'Steppers turned off (M84).');
+                  }}
+                  style={[styles.smallBtn, { backgroundColor: theme.colors.warning }]}>
+                  <Text style={[styles.smallBtnText, { color: '#000' }]}>⚡ Motors Off</Text>
+                </TouchableOpacity>
               </View>
-            </View>
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>Temperature</Text>
-              <TempControl printer={printer} status={status} />
-            </View>
-          </View>
-        )}
 
-        {tab==='camera' && <CameraView printer={printer} />}
-
-        {tab==='files' && (
-          <View style={styles.card}>
-            <View style={styles.rowBetween}><Text style={styles.cardTitle}>Files</Text><TouchableOpacity onPress={loadFiles} style={styles.smallBtn}><Text style={styles.smallBtnText}></Text></TouchableOpacity></View>
-            {filesLoading ? <ActivityIndicator color={theme.colors.primary} /> : files.length===0 ? <Text style={styles.muted}>No files or failed to load. Check API key.</Text> : (
-              <View>
-                {flattenFiles(files).slice(0,50).map((f:any, i:number)=> (
-                  <TouchableOpacity key={i} onPress={()=> loadGCode(f.path)} style={styles.fileRow}>
-                    <View style={styles.fileIcon}><Text></Text></View>
-                    <View style={{ flex:1 }}>
-                      <Text style={styles.fileName} numberOfLines={1}>{f.display || f.name}</Text>
-                      <Text style={styles.fileMeta}>{f.origin} - {(f.size/1024).toFixed(1)}KB - {f.gcodeAnalysis?.estimatedPrintTime ? `${(f.gcodeAnalysis.estimatedPrintTime/60).toFixed(0)}m` : ''}</Text>
-                    </View>
-                    <Text style={styles.fileAction}>View  -> </Text>
+              {/* Step distance selector */}
+              <View style={styles.stepRow}>
+                <Text style={styles.stepLabel}>Step:</Text>
+                {[0.1, 1, 10, 50, 100].map(s => (
+                  <TouchableOpacity
+                    key={s}
+                    onPress={() => setJogStep(s)}
+                    style={[styles.stepChip, jogStep === s && styles.stepChipActive]}>
+                    <Text style={[styles.stepChipText, jogStep === s && styles.stepChipTextActive]}>
+                      {s}mm
+                    </Text>
                   </TouchableOpacity>
                 ))}
               </View>
-            )}
-            {gcodeLoading && <ActivityIndicator color={theme.colors.primary} style={{ marginTop:10 }} />}
+
+              {/* Jog Direction Controls */}
+              <View style={styles.jogContainer}>
+                <View style={styles.jogRow}>
+                  <TouchableOpacity onPress={() => jog(printer, 'y', jogStep)} style={styles.jogBtn}>
+                    <Text style={styles.jogText}>+Y</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.jogRow}>
+                  <TouchableOpacity onPress={() => jog(printer, 'x', -jogStep)} style={styles.jogBtn}>
+                    <Text style={styles.jogText}>-X</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => home(printer, ['x', 'y'])} style={[styles.jogBtn, { backgroundColor: theme.colors.accent }]}>
+                    <Text style={styles.jogText}>XY ⌂</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => jog(printer, 'x', jogStep)} style={styles.jogBtn}>
+                    <Text style={styles.jogText}>+X</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.jogRow}>
+                  <TouchableOpacity onPress={() => jog(printer, 'y', -jogStep)} style={styles.jogBtn}>
+                    <Text style={styles.jogText}>-Y</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Z Axis & Home Row */}
+                <View style={[styles.jogRow, { marginTop: 12, gap: 10 }]}>
+                  <TouchableOpacity onPress={() => jog(printer, 'z', jogStep)} style={styles.jogBtn}>
+                    <Text style={styles.jogText}>+Z</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => home(printer, ['x', 'y', 'z'])} style={[styles.jogBtn, { backgroundColor: theme.colors.primary }]}>
+                    <Text style={styles.jogText}>ALL ⌂</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => home(printer, ['z'])} style={[styles.jogBtn, { backgroundColor: theme.colors.accent }]}>
+                    <Text style={styles.jogText}>Z ⌂</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => jog(printer, 'z', -jogStep)} style={styles.jogBtn}>
+                    <Text style={styles.jogText}>-Z</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+
+            {/* Extruder Control */}
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Extruder Feed</Text>
+              <View style={styles.stepRow}>
+                <Text style={styles.stepLabel}>Amount:</Text>
+                {[5, 10, 25, 50].map(a => (
+                  <TouchableOpacity
+                    key={a}
+                    onPress={() => setExtrudeAmount(a)}
+                    style={[styles.stepChip, extrudeAmount === a && styles.stepChipActive]}>
+                    <Text style={[styles.stepChipText, extrudeAmount === a && styles.stepChipTextActive]}>
+                      {a}mm
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+                <TouchableOpacity
+                  onPress={async () => {
+                    await extrude(printer, extrudeAmount);
+                    Alert.alert('Extruding', `Extruding ${extrudeAmount}mm filament`);
+                  }}
+                  style={[styles.primaryBtn, { flex: 1, marginTop: 0, backgroundColor: theme.colors.success }]}>
+                  <Text style={styles.primaryBtnText}>↓ Extrude (+{extrudeAmount}mm)</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={async () => {
+                    await extrude(printer, -extrudeAmount);
+                    Alert.alert('Retracting', `Retracting ${extrudeAmount}mm filament`);
+                  }}
+                  style={[styles.primaryBtn, { flex: 1, marginTop: 0, backgroundColor: theme.colors.warning }]}>
+                  <Text style={[styles.primaryBtnText, { color: '#000' }]}>↑ Retract (-{extrudeAmount}mm)</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Temperature Management */}
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Temperature Presets & Control</Text>
+              <TempManager printer={printer} status={status} />
+            </View>
+
+            {/* Fan Speed Control */}
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Part Cooling Fan</Text>
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 6 }}>
+                {[0, 25, 50, 75, 100].map(spd => (
+                  <TouchableOpacity
+                    key={spd}
+                    onPress={async () => {
+                      await setFanSpeed(printer, spd);
+                    }}
+                    style={[styles.stepChip, { flex: 1, alignItems: 'center' }]}>
+                    <Text style={styles.stepChipText}>{spd === 0 ? 'Off' : `${spd}%`}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
           </View>
         )}
 
-        {tab==='gcode' && (
-          <View style={{ gap:12 }}>
-            {selectedFile ? <Text style={styles.muted}>File: {selectedFile}</Text> : null}
-            {gcodeText ? <GCodeViewer gcode={gcodeText} /> : <View style={styles.empty}><Text style={styles.emptyTitle}>No GCode loaded</Text><Text style={styles.emptySub}>Go to Files  ->  tap View to load GCode viewer (2D + 3D).</Text></View>}
-            {gcodeText ? <View style={styles.card}><Text style={styles.cardTitle}>Raw Preview (first 500 chars)</Text><Text style={{ color: theme.colors.textMuted, fontSize:10, fontFamily: Platform.OS==='android' ? 'monospace' : 'Courier' }}>{gcodeText.slice(0,500)}</Text></View> : null}
+        {/* FILES TAB */}
+        {tab === 'files' && (
+          <View style={{ gap: 12 }}>
+            <View style={styles.card}>
+              <View style={styles.rowBetween}>
+                <Text style={styles.cardTitle}>OctoPrint Files ({files.length})</Text>
+                <TouchableOpacity onPress={loadFiles} style={styles.smallBtn}>
+                  <Text style={styles.smallBtnText}>↻ Refresh</Text>
+                </TouchableOpacity>
+              </View>
+
+              {filesLoading ? (
+                <ActivityIndicator color={theme.colors.primary} style={{ marginTop: 20 }} />
+              ) : files.length === 0 ? (
+                <Text style={styles.muted}>No files stored on OctoPrint.</Text>
+              ) : (
+                flattenFiles(files).slice(0, 50).map((f: any, i: number) => (
+                  <View key={i} style={styles.fileCardRow}>
+                    <View style={styles.fileIcon}>
+                      <Text style={{ fontSize: 18 }}>📄</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.fileName} numberOfLines={1}>
+                        {f.display || f.name}
+                      </Text>
+                      <Text style={styles.fileMeta}>
+                        {(f.size / 1024).toFixed(1)} KB • {f.origin || 'local'}
+                        {f.gcodeAnalysis?.estimatedPrintTime ? ` • ~${(f.gcodeAnalysis.estimatedPrintTime / 60).toFixed(0)}m` : ''}
+                      </Text>
+                    </View>
+                    <View style={styles.fileBtnGroup}>
+                      <TouchableOpacity
+                        onPress={() => loadGCode(f.path)}
+                        style={styles.filePreviewBtn}>
+                        <Text style={styles.filePreviewBtnText}>Preview</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => handlePrintFile(f.path, f.display || f.name)}
+                        style={styles.filePrintBtn}>
+                        <Text style={styles.filePrintBtnText}>▶ Print</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => handleDeleteFile(f.path, f.display || f.name)}
+                        style={styles.fileDeleteBtn}>
+                        <Text style={styles.fileDeleteBtnText}>✕</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))
+              )}
+
+              {gcodeLoading && <ActivityIndicator color={theme.colors.primary} style={{ marginTop: 14 }} />}
+
+              {gcodeText ? (
+                <View style={{ marginTop: 18 }}>
+                  <Text style={styles.cardTitle}>2D & 3D Layer Preview: {selectedFile}</Text>
+                  <GCodeViewer gcode={gcodeText} />
+                </View>
+              ) : null}
+            </View>
+          </View>
+        )}
+
+        {/* TERMINAL TAB */}
+        {tab === 'terminal' && (
+          <View style={{ gap: 12 }}>
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Interactive G-Code Terminal</Text>
+              <Text style={styles.muted}>Send raw G-code commands directly to printer firmware.</Text>
+
+              {/* Quick G-code command chips */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10, marginBottom: 8 }}>
+                {[
+                  { label: 'Get Temps', cmd: 'M105' },
+                  { label: 'Firmware Info', cmd: 'M115' },
+                  { label: 'Report Settings', cmd: 'M503' },
+                  { label: 'Home All', cmd: 'G28' },
+                  { label: 'Motors Off', cmd: 'M84' },
+                  { label: 'Fan Max', cmd: 'M106 S255' },
+                  { label: 'Fan Off', cmd: 'M107' },
+                ].map(c => (
+                  <TouchableOpacity
+                    key={c.cmd}
+                    onPress={() => handleSendTerminalGcode(c.cmd)}
+                    style={styles.chipBtn}>
+                    <Text style={styles.chipBtnText}>{c.label} ({c.cmd})</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              <View style={styles.terminalConsole}>
+                <ScrollView style={{ maxHeight: 220 }}>
+                  {terminalLogs.length === 0 ? (
+                    <Text style={styles.terminalPlaceholder}>Terminal ready. Type a command below or tap a quick chip.</Text>
+                  ) : (
+                    terminalLogs.map((l, i) => (
+                      <Text
+                        key={i}
+                        style={[
+                          styles.terminalLine,
+                          l.type === 'cmd' ? styles.terminalLineCmd : styles.terminalLineResp,
+                        ]}>
+                        [{l.time}] {l.text}
+                      </Text>
+                    ))
+                  )}
+                </ScrollView>
+              </View>
+
+              <View style={styles.terminalInputRow}>
+                <TextInput
+                  style={styles.terminalInput}
+                  placeholder="e.g. G28 X Y or M105"
+                  placeholderTextColor={theme.colors.textDim}
+                  value={gcodeCommand}
+                  onChangeText={setGcodeCommand}
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                  onSubmitEditing={() => handleSendTerminalGcode()}
+                />
+                <TouchableOpacity onPress={() => handleSendTerminalGcode()} style={styles.terminalSendBtn}>
+                  <Text style={styles.terminalSendText}>Send</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* ALERTS TAB */}
+        {tab === 'alerts' && (
+          <View style={{ gap: 12 }}>
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Global Notification Settings</Text>
+              <View style={styles.settingRow}>
+                <Text style={styles.settingLabel}>Enable Notifications</Text>
+                <Switch
+                  value={settings.notificationsEnabled}
+                  onValueChange={v => updateSettings({ notificationsEnabled: v })}
+                  trackColor={{ true: theme.colors.primary }}
+                />
+              </View>
+              <View style={styles.settingRow}>
+                <Text style={styles.settingLabel}>On Print Finished</Text>
+                <Switch
+                  value={settings.notifyOnComplete}
+                  onValueChange={v => updateSettings({ notifyOnComplete: v })}
+                  trackColor={{ true: theme.colors.primary }}
+                />
+              </View>
+              <View style={styles.settingRow}>
+                <Text style={styles.settingLabel}>On Printer Error</Text>
+                <Switch
+                  value={settings.notifyOnError}
+                  onValueChange={v => updateSettings({ notifyOnError: v })}
+                  trackColor={{ true: theme.colors.primary }}
+                />
+              </View>
+              <View style={styles.settingRow}>
+                <Text style={styles.settingLabel}>Progress Milestones (25/50/75/90%)</Text>
+                <Switch
+                  value={settings.notifyOnProgress}
+                  onValueChange={v => updateSettings({ notifyOnProgress: v })}
+                  trackColor={{ true: theme.colors.primary }}
+                />
+              </View>
+            </View>
           </View>
         )}
       </ScrollView>
@@ -411,127 +1165,186 @@ function PrinterDetail({ printer, onBack }: { printer: PrinterConnection; onBack
   );
 }
 
-function TempControl({ printer, status }: { printer: PrinterConnection; status?: any }) {
+function TempManager({ printer, status }: { printer: PrinterConnection; status?: any }) {
   const [toolTemp, setToolTempLocal] = useState('200');
   const [bedTemp, setBedTempLocal] = useState('60');
+
+  const setTool = (t: number) => {
+    setToolTempLocal(t.toString());
+    setToolTemp(printer, 'tool0', t);
+  };
+  const setBed = (t: number) => {
+    setBedTempLocal(t.toString());
+    setBedTemp(printer, t);
+  };
+
   return (
-    <View style={{ gap:10 }}>
-      <View style={styles.tempRow}>
-        <Text style={styles.tempLabel}>Tool0: {status?.temps.tool0 ? `${Math.round(status.temps.tool0.actual)}  ->  ${Math.round(status.temps.tool0.target)}` : '--'}</Text>
+    <View style={{ gap: 14, marginTop: 4 }}>
+      {/* Hotend Section */}
+      <View style={styles.tempBoxSection}>
+        <View style={styles.rowBetween}>
+          <Text style={styles.tempLabel}>
+            Nozzle (Tool0): {status?.temps?.tool0 ? `${Math.round(status.temps.tool0.actual)}° / ${Math.round(status.temps.tool0.target)}°` : '--'}
+          </Text>
+          <TouchableOpacity onPress={() => setTool(0)} style={styles.offBtn}>
+            <Text style={styles.offBtnText}>Turn Off</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.presetRow}>
+          {[
+            { name: 'PLA', temp: 200 },
+            { name: 'PETG', temp: 235 },
+            { name: 'ABS', temp: 245 },
+            { name: 'TPU', temp: 220 },
+          ].map(p => (
+            <TouchableOpacity key={p.name} onPress={() => setTool(p.temp)} style={styles.presetChip}>
+              <Text style={styles.presetChipText}>{p.name} ({p.temp}°)</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
         <View style={styles.tempInputRow}>
-          <TextInput style={[styles.input, { flex:1 }]} value={toolTemp} onChangeText={setToolTempLocal} keyboardType="number-pad" placeholder="200" placeholderTextColor={theme.colors.textDim} />
-          <TouchableOpacity onPress={()=> setToolTemp(printer,'tool0', parseInt(toolTemp)||0)} style={styles.smallBtn}><Text style={styles.smallBtnText}>Set</Text></TouchableOpacity>
-          <TouchableOpacity onPress={()=> setToolTemp(printer,'tool0', 0)} style={[styles.smallBtn,{ backgroundColor: theme.colors.error}]}><Text style={styles.smallBtnText}>Off</Text></TouchableOpacity>
+          <TextInput
+            style={[styles.input, { flex: 1 }]}
+            value={toolTemp}
+            onChangeText={setToolTempLocal}
+            keyboardType="number-pad"
+            placeholder="Target °C"
+            placeholderTextColor={theme.colors.textDim}
+          />
+          <TouchableOpacity onPress={() => setTool(parseInt(toolTemp, 10) || 0)} style={styles.smallBtn}>
+            <Text style={styles.smallBtnText}>Set Target</Text>
+          </TouchableOpacity>
         </View>
       </View>
-      <View style={styles.tempRow}>
-        <Text style={styles.tempLabel}>Bed: {status?.temps.bed ? `${Math.round(status.temps.bed.actual)}  ->  ${Math.round(status.temps.bed.target)}` : '--'}</Text>
+
+      {/* Bed Section */}
+      <View style={styles.tempBoxSection}>
+        <View style={styles.rowBetween}>
+          <Text style={styles.tempLabel}>
+            Heated Bed: {status?.temps?.bed ? `${Math.round(status.temps.bed.actual)}° / ${Math.round(status.temps.bed.target)}°` : '--'}
+          </Text>
+          <TouchableOpacity onPress={() => setBed(0)} style={styles.offBtn}>
+            <Text style={styles.offBtnText}>Turn Off</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.presetRow}>
+          {[
+            { name: 'PLA', temp: 60 },
+            { name: 'PETG', temp: 75 },
+            { name: 'ABS', temp: 100 },
+          ].map(p => (
+            <TouchableOpacity key={p.name} onPress={() => setBed(p.temp)} style={styles.presetChip}>
+              <Text style={styles.presetChipText}>{p.name} ({p.temp}°)</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
         <View style={styles.tempInputRow}>
-          <TextInput style={[styles.input, { flex:1 }]} value={bedTemp} onChangeText={setBedTempLocal} keyboardType="number-pad" placeholder="60" placeholderTextColor={theme.colors.textDim} />
-          <TouchableOpacity onPress={()=> setBedTemp(printer, parseInt(bedTemp)||0)} style={styles.smallBtn}><Text style={styles.smallBtnText}>Set</Text></TouchableOpacity>
-          <TouchableOpacity onPress={()=> setBedTemp(printer,0)} style={[styles.smallBtn,{ backgroundColor: theme.colors.error}]}><Text style={styles.smallBtnText}>Off</Text></TouchableOpacity>
+          <TextInput
+            style={[styles.input, { flex: 1 }]}
+            value={bedTemp}
+            onChangeText={setBedTempLocal}
+            keyboardType="number-pad"
+            placeholder="Target °C"
+            placeholderTextColor={theme.colors.textDim}
+          />
+          <TouchableOpacity onPress={() => setBed(parseInt(bedTemp, 10) || 0)} style={styles.smallBtn}>
+            <Text style={styles.smallBtnText}>Set Target</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </View>
   );
 }
 
-function flattenFiles(files: any[]): any[] {
-  const out: any[] = [];
-  function walk(list:any[], prefix='') {
-    for (const f of list) {
-      if (f.type==='folder' && f.children) walk(f.children, prefix + f.name + '/');
-      else out.push({ ...f, path: prefix + f.name });
-    }
-  }
-  walk(files);
-  return out.length? out : files;
-}
-
-function confirmAction(msg: string) {
-  // For mobile, Alert already handled; return true for now - actual handled in Alert
-  return true;
-}
-
 function SettingsScreen() {
   const { settings, updateSettings, printers } = usePrinters();
-  const [testLoading, setTestLoading] = useState(false);
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={{ padding:16, paddingBottom:100 }}>
-      <Header title="Settings" subtitle="Notifications - About" />
+    <ScrollView style={styles.screen} contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
+      <Header title="Settings" subtitle="OctoPulse Configuration" />
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Notifications (Local Polling)</Text>
-        <View style={styles.settingRow}><Text style={styles.settingLabel}>Enable Notifications</Text><Switch value={settings.notificationsEnabled} onValueChange={v=> updateSettings({ notificationsEnabled: v })} trackColor={{ true: theme.colors.primary }} /></View>
-        <View style={styles.settingRow}><Text style={styles.settingLabel}>On Print Complete</Text><Switch value={settings.notifyOnComplete} onValueChange={v=> updateSettings({ notifyOnComplete: v })} trackColor={{ true: theme.colors.primary }} /></View>
-        <View style={styles.settingRow}><Text style={styles.settingLabel}>On Error</Text><Switch value={settings.notifyOnError} onValueChange={v=> updateSettings({ notifyOnError: v })} trackColor={{ true: theme.colors.primary }} /></View>
-        <View style={styles.settingRow}><Text style={styles.settingLabel}>Progress Milestones (25/50/75)</Text><Switch value={settings.notifyOnProgress} onValueChange={v=> updateSettings({ notifyOnProgress: v })} trackColor={{ true: theme.colors.primary }} /></View>
-        <View style={styles.settingRow}><Text style={styles.settingLabel}>Poll Interval (ms)</Text><Text style={styles.settingValue}>{settings.pollIntervalMs}</Text></View>
-        <View style={{ flexDirection:'row', gap:8 }}>
-          {[2000,3000,5000].map(v=> <TouchableOpacity key={v} onPress={()=> updateSettings({ pollIntervalMs: v })} style={[styles.smallBtn, settings.pollIntervalMs===v && { backgroundColor: theme.colors.primary }]}><Text style={styles.smallBtnText}>{v}ms</Text></TouchableOpacity>)}
+        <Text style={styles.cardTitle}>Application Information</Text>
+        <Text style={styles.muted}>
+          Package: com.charles.octopulse{'\n'}
+          Version: 1.0.0{'\n'}
+          Connected Printers: {printers.length}{'\n'}
+          Target Device: Google Pixel 8 Pro{'\n'}
+          Architecture: React Native 0.86 • Expo 57
+        </Text>
+      </View>
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Background Polling Interval</Text>
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+          {[1500, 3000, 5000].map(v => (
+            <TouchableOpacity
+              key={v}
+              onPress={() => updateSettings({ pollIntervalMs: v })}
+              style={[styles.smallBtn, settings.pollIntervalMs === v && { backgroundColor: theme.colors.primary }]}>
+              <Text style={[styles.smallBtnText, settings.pollIntervalMs === v && { color: '#fff' }]}>
+                {v / 1000}s
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
-        <TouchableOpacity onPress={async ()=> {
-          setTestLoading(true);
-          await ensurePermissions();
-          await sendLocal('OctoPulse Test ', `Monitoring ${printers.length} printer(s) - Poll ${settings.pollIntervalMs}ms`);
-          setTestLoading(false);
-        }} style={styles.primaryBtn}>
-          {testLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}> Send Test Notification</Text>}
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Firebase (Crashlytics + Performance)</Text>
-        <Text style={styles.muted}>Crashlytics & Perf are configured via native modules when google-services.json is present. Test crash button below logs to Crashlytics (native build required).</Text>
-        <TouchableOpacity onPress={()=> { Alert.alert('Crashlytics', 'Test log sent (check Firebase console after native build)'); }} style={[styles.smallBtn, { marginTop:8 }]}><Text style={styles.smallBtnText}> Log Test Crash</Text></TouchableOpacity>
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>About OctoPulse</Text>
-        <Text style={styles.muted}>Package: com.charles.octopulse{"\n"}Version: 1.0.0{"\n"}API: OctoPrint 1.x REST + WebSocket{"\n"}Discovery: IP scan + SSDP + mDNS ready{"\n"}Built with Expo 57 - React Native 0.86</Text>
-        <Text style={[styles.muted, { marginTop:8, fontStyle:'italic'}]}>Made for Pixel 8 Pro - Beautiful dark mobile interface - Secure storage for API keys</Text>
       </View>
     </ScrollView>
   );
 }
 
+function flattenFiles(files: any[]): any[] {
+  const out: any[] = [];
+  function walk(list: any[], prefix = '') {
+    for (const f of list) {
+      if (f.type === 'folder' && f.children) walk(f.children, prefix + f.name + '/');
+      else out.push({ ...f, path: prefix + f.name });
+    }
+  }
+  walk(files);
+  return out.length ? out : files;
+}
+
 function AppInner() {
-  const [tab, setTab] = useState<'dashboard'|'discover'|'settings'>('dashboard');
+  const [tab, setTab] = useState<'dashboard' | 'discover' | 'settings'>('dashboard');
   const [selected, setSelected] = useState<PrinterConnection | null>(null);
   const [showDiscover, setShowDiscover] = useState(false);
 
-  // request notification permission on mount
-  useEffect(()=> { ensurePermissions(); }, []);
+  useEffect(() => {
+    ensurePermissions();
+  }, []);
 
   if (selected) {
-    return <PrinterDetail printer={selected} onBack={()=> setSelected(null)} />;
+    return <PrinterDetail printer={selected} onBack={() => setSelected(null)} />;
   }
 
   return (
-    <View style={{ flex:1, backgroundColor: theme.colors.bg }}>
-      {tab==='dashboard' && <DashboardScreen onSelect={setSelected} onDiscover={()=> setShowDiscover(true)} />}
-      {tab==='settings' && <SettingsScreen />}
-      {tab==='discover' && !showDiscover && (
-        <View style={{ flex:1 }}>
-          <DiscoverScreen onAdded={()=> { setShowDiscover(false); setTab('dashboard'); }} onClose={()=> setTab('dashboard')} />
-        </View>
-      )}
+    <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
+      {tab === 'dashboard' && <DashboardScreen onSelect={setSelected} onDiscover={() => setShowDiscover(true)} />}
+      {tab === 'settings' && <SettingsScreen />}
+
       {showDiscover && (
-        <Modal animationType="slide" presentationStyle="pageSheet" visible={showDiscover} onRequestClose={()=> setShowDiscover(false)}>
-          <SafeAreaView style={{ flex:1, backgroundColor: theme.colors.bg }}>
-            <DiscoverScreen onAdded={()=> { setShowDiscover(false); setTab('dashboard'); }} onClose={()=> setShowDiscover(false)} />
+        <Modal animationType="slide" presentationStyle="pageSheet" visible={showDiscover} onRequestClose={() => setShowDiscover(false)}>
+          <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.bg }}>
+            <DiscoverScreen
+              onAdded={() => {
+                setShowDiscover(false);
+                setTab('dashboard');
+              }}
+              onClose={() => setShowDiscover(false)}
+            />
           </SafeAreaView>
         </Modal>
       )}
 
       <View style={styles.bottomNav}>
-        <TouchableOpacity onPress={()=> setTab('dashboard')} style={[styles.navItem, tab==='dashboard' && styles.navItemActive]}>
-          <Text style={[styles.navIcon, tab==='dashboard' && styles.navIconActive]}>OP</Text><Text style={[styles.navText, tab==='dashboard' && styles.navTextActive]}>Dashboard</Text>
+        <TouchableOpacity onPress={() => setTab('dashboard')} style={[styles.navItem, tab === 'dashboard' && styles.navItemActive]}>
+          <Text style={[styles.navIcon, tab === 'dashboard' && styles.navIconActive]}>◉</Text>
+          <Text style={[styles.navText, tab === 'dashboard' && styles.navTextActive]}>Dashboard</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={()=> setShowDiscover(true)} style={styles.navFab}>
-          <Text style={styles.navFabText}></Text>
+        <TouchableOpacity onPress={() => setShowDiscover(true)} style={styles.navFab}>
+          <Text style={styles.navFabText}>+</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={()=> setTab('settings')} style={[styles.navItem, tab==='settings' && styles.navItemActive]}>
-          <Text style={[styles.navIcon, tab==='settings' && styles.navIconActive]}></Text><Text style={[styles.navText, tab==='settings' && styles.navTextActive]}>Settings</Text>
+        <TouchableOpacity onPress={() => setTab('settings')} style={[styles.navItem, tab === 'settings' && styles.navItemActive]}>
+          <Text style={[styles.navIcon, tab === 'settings' && styles.navIconActive]}>⚙</Text>
+          <Text style={[styles.navText, tab === 'settings' && styles.navTextActive]}>Settings</Text>
         </TouchableOpacity>
       </View>
       <AdBanner />
@@ -543,8 +1356,8 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <PrinterProvider>
-        <SafeAreaView style={{ flex:1, backgroundColor: theme.colors.bg }}>
-          <StatusBar style="light" backgroundColor={theme.colors.bg} />
+        <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.bg }}>
+          <StatusBar style="light" />
           <AppInner />
         </SafeAreaView>
       </PrinterProvider>
@@ -553,99 +1366,485 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex:1, backgroundColor: theme.colors.bg },
-  center: { flex:1, alignItems:'center', justifyContent:'center', backgroundColor: theme.colors.bg, gap:12 },
-  muted: { color: theme.colors.textMuted, fontSize:12, lineHeight:18 },
-  header: { flexDirection:'row', alignItems:'center', justifyContent:'space-between', paddingHorizontal:16, paddingVertical:14, borderBottomWidth:1, borderColor: theme.colors.border, backgroundColor: theme.colors.bgCard },
-  headerLeft: { flexDirection:'row', alignItems:'center', gap:12 },
-  logo: { width:38, height:38, borderRadius:12, backgroundColor: theme.colors.primary, alignItems:'center', justifyContent:'center' },
-  logoText: { color:'#fff', fontSize:18, fontWeight:'800' },
-  headerTitle: { color: theme.colors.text, fontSize:16, fontWeight:'800', letterSpacing:-0.3 },
-  headerSubtitle: { color: theme.colors.textMuted, fontSize:11 },
-  iconBtn: { backgroundColor: theme.colors.bgCardElevated, borderWidth:1, borderColor: theme.colors.border, paddingHorizontal:12, paddingVertical:6, borderRadius:9 },
-  iconBtnText: { color: theme.colors.text, fontWeight:'700', fontSize:13 },
-  hero: { backgroundColor: theme.colors.bgCardElevated, borderRadius:18, padding:18, borderWidth:1, borderColor: theme.colors.border, marginBottom:16 },
-  heroTitle: { color: theme.colors.text, fontSize:28, fontWeight:'900', letterSpacing:-0.8 },
-  heroSub: { color: theme.colors.primaryLight, fontSize:12, letterSpacing:2, fontWeight:'700', marginTop:2 },
-  heroStats: { flexDirection:'row', marginTop:16, backgroundColor: theme.colors.bg, borderRadius:12, padding:12, borderWidth:1, borderColor: theme.colors.border },
-  stat: { flex:1, alignItems:'center' },
-  statNum: { color: theme.colors.text, fontSize:18, fontWeight:'800' },
-  statLabel: { color: theme.colors.textMuted, fontSize:10, letterSpacing:1, marginTop:2, fontWeight:'700' },
-  statDivider: { width:1, backgroundColor: theme.colors.border, marginHorizontal:4 },
-  sectionHeader: { flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:12 },
-  sectionTitle: { color: theme.colors.text, fontSize:14, fontWeight:'800', letterSpacing:-0.2 },
-  smallBtn: { backgroundColor: theme.colors.bgCardElevated, borderWidth:1, borderColor: theme.colors.border, paddingHorizontal:12, paddingVertical:6, borderRadius:9 },
-  smallBtnText: { color: theme.colors.text, fontSize:12, fontWeight:'700' },
-  empty: { backgroundColor: theme.colors.bgCardElevated, borderRadius:18, padding:20, borderWidth:1, borderColor: theme.colors.border, alignItems:'center' },
-  emptyIcon: { fontSize:40, marginBottom:8 },
-  emptyTitle: { color: theme.colors.text, fontSize:16, fontWeight:'800' },
-  emptySub: { color: theme.colors.textMuted, fontSize:12, textAlign:'center', marginTop:6, lineHeight:18 },
-  hintText: { color: theme.colors.textDim, fontSize:10, textAlign:'center', marginTop:8 },
-  primaryBtn: { backgroundColor: theme.colors.primary, paddingHorizontal:18, paddingVertical:12, borderRadius:12, alignItems:'center', marginTop:14, width:'100%' },
-  primaryBtnText: { color:'#fff', fontSize:13, fontWeight:'800' },
-  infoCard: { backgroundColor: theme.colors.bg, borderRadius:16, padding:14, borderWidth:1, borderColor: theme.colors.border, marginTop:16 },
-  infoTitle: { color: theme.colors.text, fontWeight:'800', fontSize:13, marginBottom:6 },
-  infoText: { color: theme.colors.textMuted, fontSize:11, lineHeight:16 },
-  card: { backgroundColor: theme.colors.bgCardElevated, borderRadius:16, padding:14, borderWidth:1, borderColor: theme.colors.border, marginBottom:12 },
-  cardTitle: { color: theme.colors.text, fontSize:13, fontWeight:'800', marginBottom:8 },
-  label: { color: theme.colors.textMuted, fontSize:11, fontWeight:'700', letterSpacing:0.5, marginTop:8, marginBottom:4 },
-  input: { backgroundColor: theme.colors.bg, borderWidth:1, borderColor: theme.colors.border, borderRadius:10, paddingHorizontal:12, paddingVertical:10, color: theme.colors.text, fontSize:13 },
-  switchRow: { flexDirection:'row', alignItems:'center', justifyContent:'space-between', backgroundColor: theme.colors.bg, borderWidth:1, borderColor: theme.colors.border, borderRadius:10, paddingHorizontal:12, paddingVertical:8 },
-  switchLabel: { color: theme.colors.text, fontSize:12, fontWeight:'700' },
-  rowBetween: { flexDirection:'row', justifyContent:'space-between', alignItems:'center' },
-  discoverRow: { flexDirection:'row', alignItems:'center', backgroundColor: theme.colors.bg, borderWidth:1, borderColor: theme.colors.border, borderRadius:12, padding:12, marginTop:8, gap:12 },
-  discoverIcon: { width:40, height:40, borderRadius:10, backgroundColor: theme.colors.bgCardElevated, borderWidth:1, borderColor: theme.colors.border, alignItems:'center', justifyContent:'center' },
-  discoverName: { color: theme.colors.text, fontSize:13, fontWeight:'700' },
-  discoverSub: { color: theme.colors.textMuted, fontSize:11, marginTop:2 },
-  discoverAdd: { color: theme.colors.primary, fontSize:12, fontWeight:'800' },
-  detailHero: { backgroundColor: theme.colors.bgCardElevated, borderRadius:16, padding:14, borderWidth:1, borderColor: theme.colors.border, flexDirection:'row', gap:12 },
-  detailFile: { color: theme.colors.text, fontSize:14, fontWeight:'800' },
-  detailProgress: { color: theme.colors.primaryLight, fontSize:12, fontWeight:'700', marginTop:4 },
-  progressBar: { height:6, backgroundColor: theme.colors.bg, borderRadius:6, marginTop:6, overflow:'hidden', borderWidth:1, borderColor: theme.colors.border },
-  progressFill: { height:'100%', backgroundColor: theme.colors.primary, borderRadius:6 },
-  detailTime: { color: theme.colors.textMuted, fontSize:11, marginTop:4 },
-  detailTemps: { gap:8, minWidth:110 },
-  miniTemp: { backgroundColor: theme.colors.bg, borderRadius:10, padding:8, borderWidth:1, borderColor: theme.colors.border },
-  miniTempLabel: { color: theme.colors.textDim, fontSize:9, letterSpacing:1, fontWeight:'700' },
-  miniTempVal: { color: theme.colors.text, fontSize:12, fontWeight:'800', marginTop:2 },
-  tabs: { flexDirection:'row', gap:6, marginTop:12, marginBottom:12 },
-  tab: { flex:1, backgroundColor: theme.colors.bgCardElevated, borderWidth:1, borderColor: theme.colors.border, paddingVertical:8, borderRadius:10, alignItems:'center' },
+  screen: { flex: 1, backgroundColor: theme.colors.bg },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.bg, gap: 12 },
+  muted: { color: theme.colors.textMuted, fontSize: 12, lineHeight: 18 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.bgCard,
+  },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  logo: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: theme.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoText: { color: '#fff', fontSize: 18, fontWeight: '800' },
+  headerTitle: { color: theme.colors.text, fontSize: 16, fontWeight: '800', letterSpacing: -0.3 },
+  headerSubtitle: { color: theme.colors.textMuted, fontSize: 11 },
+  iconBtn: {
+    backgroundColor: theme.colors.bgCardElevated,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 9,
+  },
+  iconBtnText: { color: theme.colors.text, fontWeight: '700', fontSize: 13 },
+  hero: {
+    backgroundColor: theme.colors.bgCardElevated,
+    borderRadius: 18,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    marginBottom: 16,
+  },
+  heroTitle: { color: theme.colors.text, fontSize: 28, fontWeight: '900', letterSpacing: -0.8 },
+  heroSub: { color: theme.colors.primaryLight, fontSize: 11, letterSpacing: 2, fontWeight: '800', marginTop: 2 },
+  heroStats: {
+    flexDirection: 'row',
+    marginTop: 16,
+    backgroundColor: theme.colors.bg,
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  stat: { flex: 1, alignItems: 'center' },
+  statNum: { color: theme.colors.text, fontSize: 18, fontWeight: '800' },
+  statLabel: { color: theme.colors.textMuted, fontSize: 9, letterSpacing: 1, marginTop: 2, fontWeight: '800' },
+  statDivider: { width: 1, backgroundColor: theme.colors.border, marginHorizontal: 4 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  sectionTitle: { color: theme.colors.text, fontSize: 14, fontWeight: '800', letterSpacing: -0.2 },
+  smallBtn: {
+    backgroundColor: theme.colors.bgCardElevated,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 9,
+  },
+  smallBtnText: { color: theme.colors.text, fontSize: 12, fontWeight: '700' },
+  empty: {
+    backgroundColor: theme.colors.bgCardElevated,
+    borderRadius: 18,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    alignItems: 'center',
+  },
+  emptyIcon: { fontSize: 44, marginBottom: 8 },
+  emptyTitle: { color: theme.colors.text, fontSize: 17, fontWeight: '800' },
+  emptySub: { color: theme.colors.textMuted, fontSize: 12, textAlign: 'center', marginTop: 6, lineHeight: 18 },
+  hintText: { color: theme.colors.textDim, fontSize: 10, textAlign: 'center', marginTop: 8 },
+  primaryBtn: {
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 14,
+    width: '100%',
+  },
+  primaryBtnText: { color: '#fff', fontSize: 13, fontWeight: '800' },
+  infoCard: {
+    backgroundColor: theme.colors.bg,
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    marginTop: 16,
+  },
+  infoTitle: { color: theme.colors.text, fontWeight: '800', fontSize: 13, marginBottom: 6 },
+  infoText: { color: theme.colors.textMuted, fontSize: 11, lineHeight: 18 },
+  card: {
+    backgroundColor: theme.colors.bgCardElevated,
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    marginBottom: 12,
+  },
+  cardTitle: { color: theme.colors.text, fontSize: 13, fontWeight: '800', marginBottom: 8 },
+  label: {
+    color: theme.colors.textMuted,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  input: {
+    backgroundColor: theme.colors.bg,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: theme.colors.text,
+    fontSize: 13,
+  },
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: theme.colors.bg,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  switchLabel: { color: theme.colors.text, fontSize: 12, fontWeight: '700' },
+  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  discoverRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.bg,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 8,
+    gap: 12,
+  },
+  discoverIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 10,
+    backgroundColor: theme.colors.bgCardElevated,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  discoverName: { color: theme.colors.text, fontSize: 13, fontWeight: '700' },
+  discoverSub: { color: theme.colors.textMuted, fontSize: 11, marginTop: 2 },
+  pairBtnBadge: {
+    backgroundColor: 'rgba(14, 165, 233, 0.15)',
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  pairBtnText: { color: theme.colors.primary, fontSize: 11, fontWeight: '800' },
+  detailHero: {
+    backgroundColor: theme.colors.bgCardElevated,
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    flexDirection: 'row',
+    gap: 12,
+  },
+  detailFile: { color: theme.colors.text, fontSize: 14, fontWeight: '800' },
+  detailProgress: { color: theme.colors.primaryLight, fontSize: 12, fontWeight: '700', marginTop: 4 },
+  progressBar: {
+    height: 6,
+    backgroundColor: theme.colors.bg,
+    borderRadius: 6,
+    marginTop: 6,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  progressFill: { height: '100%', backgroundColor: theme.colors.primary, borderRadius: 6 },
+  detailTime: { color: theme.colors.textMuted, fontSize: 11, marginTop: 4 },
+  detailTemps: { gap: 8, minWidth: 110 },
+  miniTemp: {
+    backgroundColor: theme.colors.bg,
+    borderRadius: 10,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  miniTempLabel: { color: theme.colors.textDim, fontSize: 9, letterSpacing: 1, fontWeight: '800' },
+  miniTempVal: { color: theme.colors.text, fontSize: 12, fontWeight: '800', marginTop: 2 },
+  tabs: { flexDirection: 'row', gap: 6, marginTop: 12, marginBottom: 12 },
+  tab: {
+    flex: 1,
+    backgroundColor: theme.colors.bgCardElevated,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    paddingVertical: 8,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
   tabActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
-  tabText: { color: theme.colors.textMuted, fontSize:10, fontWeight:'800', letterSpacing:1 },
-  tabTextActive: { color:'#fff' },
-  grid2: { flexDirection:'row', flexWrap:'wrap', gap:10 },
-  statCard: { width: (Dimensions.get('window').width - 16*2 - 10)/2, backgroundColor: theme.colors.bgCardElevated, borderWidth:1, borderColor: theme.colors.border, borderRadius:12, padding:12 },
-  statCardLabel: { color: theme.colors.textDim, fontSize:10, letterSpacing:1, fontWeight:'700' },
-  statCardVal: { color: theme.colors.text, fontSize:14, fontWeight:'800', marginTop:4 },
-  btnGrid: { flexDirection:'row', flexWrap:'wrap', gap:8 },
-  controlBtn: { flexBasis:'48%', paddingVertical:12, borderRadius:10, alignItems:'center' },
-  controlBtnText: { color:'#fff', fontWeight:'800', fontSize:12 },
-  jogGrid: { flexDirection:'row', flexWrap:'wrap', gap:8, justifyContent:'center' },
-  jogBtn: { width:70, height:44, backgroundColor: theme.colors.bg, borderWidth:1, borderColor: theme.colors.border, borderRadius:10, alignItems:'center', justifyContent:'center' },
-  jogText: { color: theme.colors.text, fontWeight:'800', fontSize:12 },
-  tempRow: { backgroundColor: theme.colors.bg, borderRadius:10, padding:10, borderWidth:1, borderColor: theme.colors.border },
-  tempInputRow: { flexDirection:'row', gap:8, marginTop:6, alignItems:'center' },
-  fileRow: { flexDirection:'row', alignItems:'center', backgroundColor: theme.colors.bg, borderWidth:1, borderColor: theme.colors.border, borderRadius:12, padding:12, marginTop:8, gap:10 },
-  fileIcon: { width:36, height:36, borderRadius:8, backgroundColor: theme.colors.bgCardElevated, borderWidth:1, borderColor: theme.colors.border, alignItems:'center', justifyContent:'center' },
-  fileName: { color: theme.colors.text, fontSize:13, fontWeight:'700' },
-  fileMeta: { color: theme.colors.textMuted, fontSize:11, marginTop:2 },
-  fileAction: { color: theme.colors.primary, fontWeight:'800', fontSize:11 },
-  settingRow: { flexDirection:'row', justifyContent:'space-between', alignItems:'center', paddingVertical:10, borderBottomWidth: 1, borderColor: theme.colors.border },
-  settingLabel: { color: theme.colors.text, fontSize:13, fontWeight:'600' },
-  settingValue: { color: theme.colors.textMuted, fontSize:12 },
-  codeText: { color: theme.colors.textMuted, fontSize:11, fontFamily: Platform.OS==='android' ? 'monospace' : 'Courier', lineHeight:16 },
-  bottomNav: { flexDirection:'row', alignItems:'center', backgroundColor: theme.colors.bgCard, borderTopWidth:1, borderColor: theme.colors.border, paddingHorizontal:16, paddingVertical:10, gap:12 },
-  navItem: { flex:1, alignItems:'center', paddingVertical:6, borderRadius:12, borderWidth:1, borderColor:'transparent' },
-  navItemActive: { backgroundColor: theme.colors.bgCardElevated, borderColor: theme.colors.border },
-  navIcon: { fontSize:16, color: theme.colors.textMuted },
+  tabText: { color: theme.colors.textMuted, fontSize: 9, fontWeight: '800', letterSpacing: 0.8 },
+  tabTextActive: { color: '#fff' },
+  grid2: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  statCard: {
+    width: (Dimensions.get('window').width - 16 * 2 - 10) / 2,
+    backgroundColor: theme.colors.bgCardElevated,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 12,
+    padding: 12,
+  },
+  statCardLabel: { color: theme.colors.textDim, fontSize: 9, letterSpacing: 1, fontWeight: '800' },
+  statCardVal: { color: theme.colors.text, fontSize: 14, fontWeight: '800', marginTop: 4 },
+  btnGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  controlBtn: { flexBasis: '48%', paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
+  controlBtnText: { color: '#fff', fontWeight: '800', fontSize: 12 },
+  stepRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8, marginBottom: 8 },
+  stepLabel: { color: theme.colors.textMuted, fontSize: 11, fontWeight: '700' },
+  stepChip: {
+    backgroundColor: theme.colors.bg,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  stepChipActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
+  stepChipText: { color: theme.colors.textMuted, fontSize: 11, fontWeight: '700' },
+  stepChipTextActive: { color: '#fff' },
+  jogContainer: { alignItems: 'center', marginTop: 8 },
+  jogRow: { flexDirection: 'row', gap: 8, justifyContent: 'center', marginVertical: 4 },
+  jogBtn: {
+    width: 68,
+    height: 44,
+    backgroundColor: theme.colors.bg,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  jogText: { color: theme.colors.text, fontWeight: '800', fontSize: 12 },
+  tempBoxSection: {
+    backgroundColor: theme.colors.bg,
+    borderRadius: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  tempLabel: { color: theme.colors.text, fontSize: 12, fontWeight: '700' },
+  offBtn: {
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderWidth: 1,
+    borderColor: theme.colors.error,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  offBtnText: { color: theme.colors.error, fontSize: 10, fontWeight: '700' },
+  presetRow: { flexDirection: 'row', gap: 6, marginTop: 8, flexWrap: 'wrap' },
+  presetChip: {
+    backgroundColor: theme.colors.bgCardElevated,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  presetChipText: { color: theme.colors.text, fontSize: 10, fontWeight: '700' },
+  tempInputRow: { flexDirection: 'row', gap: 8, marginTop: 8, alignItems: 'center' },
+  fileCardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.bg,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 12,
+    padding: 10,
+    marginTop: 8,
+    gap: 8,
+  },
+  fileIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    backgroundColor: theme.colors.bgCardElevated,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fileName: { color: theme.colors.text, fontSize: 12, fontWeight: '700' },
+  fileMeta: { color: theme.colors.textMuted, fontSize: 10, marginTop: 2 },
+  fileBtnGroup: { flexDirection: 'row', gap: 6 },
+  filePreviewBtn: {
+    backgroundColor: theme.colors.bgCardElevated,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  filePreviewBtnText: { color: theme.colors.text, fontSize: 10, fontWeight: '700' },
+  filePrintBtn: {
+    backgroundColor: theme.colors.success,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  filePrintBtnText: { color: '#fff', fontSize: 10, fontWeight: '800' },
+  fileDeleteBtn: {
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    borderWidth: 1,
+    borderColor: theme.colors.error,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  fileDeleteBtnText: { color: theme.colors.error, fontSize: 10, fontWeight: '800' },
+  chipBtn: {
+    backgroundColor: theme.colors.bg,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginRight: 6,
+  },
+  chipBtnText: { color: theme.colors.textMuted, fontSize: 10, fontWeight: '700' },
+  terminalConsole: {
+    backgroundColor: '#020617',
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 10,
+    padding: 10,
+    minHeight: 140,
+    marginTop: 6,
+  },
+  terminalPlaceholder: { color: theme.colors.textDim, fontSize: 11, fontStyle: 'italic' },
+  terminalLine: { fontSize: 10, fontFamily: Platform.OS === 'android' ? 'monospace' : 'Courier', marginVertical: 1 },
+  terminalLineCmd: { color: theme.colors.primaryLight, fontWeight: '700' },
+  terminalLineResp: { color: '#94a3b8' },
+  terminalInputRow: { flexDirection: 'row', gap: 8, marginTop: 10 },
+  terminalInput: {
+    flex: 1,
+    backgroundColor: theme.colors.bg,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    color: theme.colors.text,
+    fontSize: 12,
+    fontFamily: Platform.OS === 'android' ? 'monospace' : 'Courier',
+  },
+  terminalSendBtn: {
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    justifyContent: 'center',
+  },
+  terminalSendText: { color: '#fff', fontSize: 12, fontWeight: '800' },
+  settingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  settingLabel: { color: theme.colors.text, fontSize: 13, fontWeight: '600' },
+  bottomNav: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.bgCard,
+    borderTopWidth: 1,
+    borderColor: theme.colors.border,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 12,
+  },
+  navItem: { flex: 1, alignItems: 'center', paddingVertical: 4 },
+  navItemActive: { opacity: 1 },
+  navIcon: { fontSize: 18, color: theme.colors.textMuted },
   navIconActive: { color: theme.colors.primary },
-  navText: { color: theme.colors.textMuted, fontSize:10, fontWeight:'700', marginTop:2, letterSpacing:0.5 },
+  navText: { color: theme.colors.textMuted, fontSize: 10, fontWeight: '700', marginTop: 2 },
   navTextActive: { color: theme.colors.text },
-  navFab: { width:56, height:56, borderRadius:18, backgroundColor: theme.colors.primary, alignItems:'center', justifyContent:'center', elevation:6, shadowColor:'#000', shadowOpacity:0.3, shadowRadius:8 },
-  navFabText: { color:'#fff', fontSize:26, fontWeight:'800', marginTop:-2 },
+  navFab: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: theme.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  navFabText: { color: '#fff', fontSize: 26, fontWeight: '800', marginTop: -2 },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  pairingCard: {
+    backgroundColor: theme.colors.bgCardElevated,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    padding: 20,
+    width: '100%',
+    maxWidth: 400,
+    alignItems: 'center',
+  },
+  pairingHeader: { alignItems: 'center', marginBottom: 16 },
+  pairingTitle: { color: theme.colors.text, fontSize: 18, fontWeight: '900' },
+  pairingSubtitle: { color: theme.colors.textMuted, fontSize: 12, marginTop: 4 },
+  pairingBody: { alignItems: 'center', width: '100%', marginVertical: 12 },
+  pulsingIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(14, 165, 233, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  pulsingIcon: { fontSize: 32 },
+  pairingInstructionTitle: { color: theme.colors.text, fontSize: 16, fontWeight: '800', textAlign: 'center' },
+  pairingInstructionText: {
+    color: theme.colors.textMuted,
+    fontSize: 12,
+    textAlign: 'center',
+    lineHeight: 18,
+    marginTop: 8,
+  },
+  countdownPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: theme.colors.bg,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginTop: 16,
+  },
+  countdownText: { color: theme.colors.text, fontSize: 12, fontWeight: '700' },
+  pairingStatusText: { color: theme.colors.textMuted, fontSize: 13, marginTop: 12 },
+  successIcon: { fontSize: 44, color: theme.colors.success, marginBottom: 8 },
+  successTitle: { color: theme.colors.text, fontSize: 17, fontWeight: '800' },
+  successSub: { color: theme.colors.textMuted, fontSize: 12, marginTop: 4 },
+  errorIcon: { fontSize: 44, color: theme.colors.error, marginBottom: 8 },
+  errorTitle: { color: theme.colors.error, fontSize: 17, fontWeight: '800' },
+  pairingFooter: { width: '100%', marginTop: 16 },
+  pairingCancelBtn: {
+    backgroundColor: theme.colors.bg,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  pairingCancelText: { color: theme.colors.textMuted, fontSize: 13, fontWeight: '700' },
 });
-
-
-
-
-

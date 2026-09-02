@@ -8,6 +8,13 @@ export type PrinterConnection = {
   username?: string;
   createdAt: number;
   lastSeen?: number;
+  // Per-printer notification overrides (if undefined, fallback to global AppSettings)
+  notifications?: {
+    enabled?: boolean; // if false, silence this printer even if global enabled
+    onComplete?: boolean;
+    onError?: boolean;
+    onProgress?: boolean;
+  };
 };
 
 export type PrinterStatus = {
@@ -20,7 +27,7 @@ export type PrinterStatus = {
     chamber?: { actual: number; target: number };
   };
   job: {
-    file?: { name: string; display: string; size: number; origin: string; date?: number };
+    file?: { name: string; display: string; size: number; origin: string; date?: number; path?: string };
     estimatedPrintTime?: number;
     lastPrintTime?: number;
     progress: { completion?: number; printTime?: number; printTimeLeft?: number; filepos?: number };

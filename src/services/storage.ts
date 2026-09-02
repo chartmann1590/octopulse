@@ -2,6 +2,8 @@ import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PrinterConnection, AppSettings } from '../types';
 
+declare const __DEV__: boolean;
+
 const KEYS = {
   printers: 'octopulse_printers_v2',
   settings: 'octopulse_settings_v2',
@@ -76,9 +78,9 @@ export async function loadSettings(): Promise<AppSettings> {
 
 // Firebase placeholder crashlytics logging
 export function logCrashlytics(msg: string, data?: any) {
-  if (__DEV__) console.log('[Crashlytics]', msg, data);
+  if (typeof __DEV__ !== 'undefined' && __DEV__) console.log('[Crashlytics]', msg, data);
   // real implementation uses @react-native-firebase/crashlytics when linked
 }
 export function logPerformance(trace: string, durationMs: number) {
-  if (__DEV__) console.log('[Perf]', trace, durationMs + 'ms');
+  if (typeof __DEV__ !== 'undefined' && __DEV__) console.log('[Perf]', trace, durationMs + 'ms');
 }

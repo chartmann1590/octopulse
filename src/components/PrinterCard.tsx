@@ -15,7 +15,7 @@ function ProgressRing({ progress, size=56, stroke=6 }: { progress: number; size?
         <Circle cx={size/2} cy={size/2} r={r} stroke={theme.colors.border} strokeWidth={stroke} fill="none" />
         <Circle cx={size/2} cy={size/2} r={r} stroke={color} strokeWidth={stroke} fill="none" strokeDasharray={`${c} ${c}`} strokeDashoffset={offset} strokeLinecap="round" rotation={-90} origin={`${size/2}, ${size/2}`} />
       </Svg>
-      <View style={[StyleSheet.absoluteFillObject, { alignItems:'center', justifyContent:'center'}]}>
+      <View style={[StyleSheet.absoluteFill, { alignItems:'center', justifyContent:'center'}]}>
         <Text style={{ color: theme.colors.text, fontWeight:'800', fontSize:12 }}>{Math.round(progress)}%</Text>
       </View>
     </View>

@@ -14,6 +14,7 @@ import {
   Switch,
   Platform,
   Dimensions,
+  Linking,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from './src/theme/index';
@@ -44,6 +45,7 @@ import {
   pollAppKey,
 } from './src/services/octoprint';
 import { ensurePermissions, sendLocal } from './src/services/notifications';
+import { formatDuration, formatFilament } from './src/utils/format';
 
 function Header({
   title,
@@ -339,17 +341,6 @@ function DashboardScreen({
           ))}
         </>
       )}
-
-      <View style={styles.infoCard}>
-        <Text style={styles.infoTitle}>OctoPulse Pro Features</Text>
-        <Text style={styles.infoText}>
-          • Zero-Key Auto-Approval via OctoPrint Application Keys{'\n'}
-          • Hardware-Accelerated 30+ FPS MJPEG Live Camera Stream{'\n'}
-          • Multi-Axis Jogging, Extruder, Fan, and Temperature Control{'\n'}
-          • Live 2D & 3D Layer G-Code Visualizer{'\n'}
-          • Interactive G-Code Terminal Console & File Management
-        </Text>
-      </View>
     </ScrollView>
   );
 }
@@ -590,7 +581,7 @@ function DiscoverScreen({ onAdded, onClose }: { onAdded: () => void; onClose: ()
 function PrinterDetail({ printer, onBack }: { printer: PrinterConnection; onBack: () => void }) {
   const { statuses, refreshStatuses, settings, updateSettings, updatePrinter } = usePrinters();
   const status = statuses[printer.id];
-  const [tab, setTab] = useState<'overview' | 'control' | 'files' | 'terminal' | 'alerts'>('overview');
+  const [tab, setTab] = useState<'overview' | 'control' | 'gcode' | 'files' | 'terminal' | 'alerts'>('overview');
   const [files, setFiles] = useState<any[]>([]);
   const [filesLoading, setFilesLoading] = useState(false);
   const [gcodeText, setGcodeText] = useState<string>('');
@@ -754,8 +745,8 @@ function PrinterDetail({ printer, onBack }: { printer: PrinterConnection; onBack
               <View style={[styles.progressFill, { width: `${Math.min(100, completion)}%` }]} />
             </View>
             <Text style={styles.detailTime}>
-              {status?.job?.progress?.printTime ? `${Math.floor(status.job.progress.printTime / 60)}m elapsed` : ''}
-              {status?.job?.progress?.printTimeLeft ? ` • ${Math.floor(status.job.progress.printTimeLeft / 60)}m remaining` : ''}
+              {status?.job?.progress?.printTime ? `${formatDuration(status.job.progress.printTime)} elapsed` : ''}
+              {status?.job?.progress?.printTimeLeft ? ` • ${formatDuration(status.job.progress.printTimeLeft)} remaining` : ''}
             </Text>
           </View>
           <View style={styles.detailTemps}>
@@ -779,6 +770,7 @@ function PrinterDetail({ printer, onBack }: { printer: PrinterConnection; onBack
           {([
             { k: 'overview', label: 'OVERVIEW' },
             { k: 'control', label: 'CONTROL' },
+            { k: 'gcode', label: 'G-CODE' },
             { k: 'files', label: 'FILES' },
             { k: 'terminal', label: 'TERMINAL' },
             { k: 'alerts', label: 'ALERTS' },
@@ -796,6 +788,29 @@ function PrinterDetail({ printer, onBack }: { printer: PrinterConnection; onBack
         {tab === 'overview' && (
           <View style={{ gap: 12 }}>
             <CameraView printer={printer} status={status} />
+
+            {/* Active Print G-Code Preview Card */}
+            {status?.job?.file?.name ? (
+              <View style={styles.card}>
+                <View style={styles.rowBetween}>
+                  <View style={{ flex: 1, paddingRight: 10 }}>
+                    <Text style={styles.cardTitle}>G-Code Layer Toolpaths</Text>
+                    <Text style={styles.muted} numberOfLines={1}>
+                      {status.job.file.display || status.job.file.name}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => {
+                      const filePath = status?.job?.file?.path || status?.job?.file?.name || '';
+                      loadGCode(filePath);
+                      setTab('gcode');
+                    }}
+                    style={[styles.smallBtn, { backgroundColor: theme.colors.primary }]}>
+                    <Text style={[styles.smallBtnText, { color: '#fff' }]}>📐 View Layers →</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : null}
 
             <View style={styles.card}>
               <Text style={styles.cardTitle}>Print Job Actions</Text>
@@ -845,15 +860,68 @@ function PrinterDetail({ printer, onBack }: { printer: PrinterConnection; onBack
               <View style={styles.statCard}>
                 <Text style={styles.statCardLabel}>PRINT TIME</Text>
                 <Text style={styles.statCardVal}>
-                  {status?.job?.progress?.printTime ? `${(status.job.progress.printTime / 60).toFixed(1)}m` : '—'}
+                  {status?.job?.progress?.printTime ? formatDuration(status.job.progress.printTime) : '—'}
                 </Text>
               </View>
               <View style={styles.statCard}>
                 <Text style={styles.statCardLabel}>FILAMENT</Text>
                 <Text style={styles.statCardVal}>
-                  {status?.job?.filament?.length ? `${(status.job.filament.length / 1000).toFixed(2)}m` : '—'}
+                  {formatFilament(status?.job?.filament, (status?.job?.file as any)?.gcodeAnalysis?.filament)}
                 </Text>
               </View>
+            </View>
+          </View>
+        )}
+
+        {/* G-CODE TAB */}
+        {tab === 'gcode' && (
+          <View style={{ gap: 12 }}>
+            <View style={styles.card}>
+              <View style={styles.rowBetween}>
+                <View style={{ flex: 1, paddingRight: 10 }}>
+                  <Text style={styles.cardTitle}>2D & 3D Layer Visualizer</Text>
+                  <Text style={styles.muted} numberOfLines={1}>
+                    {selectedFile || status?.job?.file?.display || status?.job?.file?.name || 'No file selected'}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => {
+                    const filePath = selectedFile || status?.job?.file?.path || status?.job?.file?.name || '';
+                    if (filePath) loadGCode(filePath);
+                  }}
+                  disabled={gcodeLoading}
+                  style={styles.smallBtn}>
+                  <Text style={styles.smallBtnText}>{gcodeLoading ? 'Loading...' : '↻ Reload'}</Text>
+                </TouchableOpacity>
+              </View>
+
+              {gcodeLoading ? (
+                <View style={{ padding: 40, alignItems: 'center' }}>
+                  <ActivityIndicator size="large" color={theme.colors.primary} />
+                  <Text style={[styles.muted, { marginTop: 12 }]}>Downloading and parsing toolpaths...</Text>
+                </View>
+              ) : gcodeText ? (
+                <View style={{ marginTop: 12 }}>
+                  <GCodeViewer gcode={gcodeText} status={status} />
+                </View>
+              ) : (
+                <View style={{ padding: 24, alignItems: 'center', gap: 10 }}>
+                  <Text style={{ fontSize: 36 }}>📐</Text>
+                  <Text style={styles.cardTitle}>No Toolpath Loaded</Text>
+                  <Text style={[styles.muted, { textAlign: 'center', maxWidth: 280 }]}>
+                    {status?.job?.file?.name
+                      ? `Tap below to load toolpaths for "${status.job.file.display || status.job.file.name}"`
+                      : 'Select a G-code file from the FILES tab to inspect layer toolpaths.'}
+                  </Text>
+                  {status?.job?.file?.name ? (
+                    <TouchableOpacity
+                      onPress={() => loadGCode(status.job.file!.path || status.job.file!.name)}
+                      style={[styles.primaryBtn, { marginTop: 8 }]}>
+                      <Text style={styles.primaryBtnText}>📐 Load Current Print Toolpath</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+              )}
             </View>
           </View>
         )}
@@ -1019,12 +1087,15 @@ function PrinterDetail({ printer, onBack }: { printer: PrinterConnection; onBack
                       </Text>
                       <Text style={styles.fileMeta}>
                         {(f.size / 1024).toFixed(1)} KB • {f.origin || 'local'}
-                        {f.gcodeAnalysis?.estimatedPrintTime ? ` • ~${(f.gcodeAnalysis.estimatedPrintTime / 60).toFixed(0)}m` : ''}
+                        {f.gcodeAnalysis?.estimatedPrintTime ? ` • ~${formatDuration(f.gcodeAnalysis.estimatedPrintTime)}` : ''}
                       </Text>
                     </View>
                     <View style={styles.fileBtnGroup}>
                       <TouchableOpacity
-                        onPress={() => loadGCode(f.path)}
+                        onPress={() => {
+                          loadGCode(f.path);
+                          setTab('gcode');
+                        }}
                         style={styles.filePreviewBtn}>
                         <Text style={styles.filePreviewBtnText}>Preview</Text>
                       </TouchableOpacity>
@@ -1048,7 +1119,7 @@ function PrinterDetail({ printer, onBack }: { printer: PrinterConnection; onBack
               {gcodeText ? (
                 <View style={{ marginTop: 18 }}>
                   <Text style={styles.cardTitle}>2D & 3D Layer Preview: {selectedFile}</Text>
-                  <GCodeViewer gcode={gcodeText} />
+                  <GCodeViewer gcode={gcodeText} status={status} />
                 </View>
               ) : null}
             </View>
@@ -1258,32 +1329,202 @@ function TempManager({ printer, status }: { printer: PrinterConnection; status?:
 
 function SettingsScreen() {
   const { settings, updateSettings, printers } = usePrinters();
+
+  const openGitHub = () => {
+    Linking.openURL('https://github.com/chartmann1590/octopulse').catch(() => {
+      Alert.alert('Link Error', 'Unable to open GitHub repository.');
+    });
+  };
+
+  const openIssues = () => {
+    Linking.openURL('https://github.com/chartmann1590/octopulse/issues').catch(() => {
+      Alert.alert('Link Error', 'Unable to open GitHub issues.');
+    });
+  };
+
   return (
     <ScrollView style={styles.screen} contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
-      <Header title="Settings" subtitle="OctoPulse Configuration" />
+      <Header title="Settings" subtitle="OctoPulse Preferences & Info" />
+
+      {/* Notification Preferences */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Application Information</Text>
-        <Text style={styles.muted}>
-          Package: com.charles.octopulse{'\n'}
-          Version: 1.0.0{'\n'}
-          Connected Printers: {printers.length}{'\n'}
-          Target Device: Google Pixel 8 Pro{'\n'}
-          Architecture: React Native 0.86 • Expo 57
+        <Text style={styles.cardTitle}>Notifications & Live Alerts</Text>
+        <Text style={[styles.muted, { marginBottom: 12 }]}>
+          Configure ongoing print progress and completion alerts.
         </Text>
+
+        <View style={styles.settingRow}>
+          <View style={{ flex: 1, paddingRight: 10 }}>
+            <Text style={styles.settingLabel}>Global Notifications</Text>
+            <Text style={styles.settingSub}>Master toggle for notifications and alerts</Text>
+          </View>
+          <Switch
+            value={settings.notificationsEnabled}
+            onValueChange={v => updateSettings({ notificationsEnabled: v })}
+            trackColor={{ true: theme.colors.primary }}
+          />
+        </View>
+
+        <View style={styles.settingDivider} />
+
+        <View style={styles.settingRow}>
+          <View style={{ flex: 1, paddingRight: 10 }}>
+            <Text style={styles.settingLabel}>Print Finished Alert</Text>
+            <Text style={styles.settingSub}>Notify when a 3D print completes</Text>
+          </View>
+          <Switch
+            value={settings.notifyOnComplete}
+            disabled={!settings.notificationsEnabled}
+            onValueChange={v => updateSettings({ notifyOnComplete: v })}
+            trackColor={{ true: theme.colors.primary }}
+          />
+        </View>
+
+        <View style={styles.settingDivider} />
+
+        <View style={styles.settingRow}>
+          <View style={{ flex: 1, paddingRight: 10 }}>
+            <Text style={styles.settingLabel}>Printer Error Alerts</Text>
+            <Text style={styles.settingSub}>Notify on thermal runaway or printer disconnects</Text>
+          </View>
+          <Switch
+            value={settings.notifyOnError}
+            disabled={!settings.notificationsEnabled}
+            onValueChange={v => updateSettings({ notifyOnError: v })}
+            trackColor={{ true: theme.colors.primary }}
+          />
+        </View>
+
+        <View style={styles.settingDivider} />
+
+        <View style={styles.settingRow}>
+          <View style={{ flex: 1, paddingRight: 10 }}>
+            <Text style={styles.settingLabel}>Milestone Updates</Text>
+            <Text style={styles.settingSub}>Alerts at 25%, 50%, 75%, and 90% progress</Text>
+          </View>
+          <Switch
+            value={settings.notifyOnProgress}
+            disabled={!settings.notificationsEnabled}
+            onValueChange={v => updateSettings({ notifyOnProgress: v })}
+            trackColor={{ true: theme.colors.primary }}
+          />
+        </View>
       </View>
+
+      {/* Background Monitoring & Polling Interval */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Background Polling Interval</Text>
-        <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
-          {[1500, 3000, 5000].map(v => (
+        <Text style={styles.cardTitle}>Live Monitoring Frequency</Text>
+        <Text style={[styles.muted, { marginBottom: 12 }]}>
+          How frequently OctoPulse queries your OctoPrint printers.
+        </Text>
+
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          {[
+            { label: 'Fast (1.5s)', val: 1500, desc: 'Real-time telemetry' },
+            { label: 'Normal (3s)', val: 3000, desc: 'Balanced' },
+            { label: 'Eco (5s)', val: 5000, desc: 'Battery saver' },
+          ].map(opt => (
             <TouchableOpacity
-              key={v}
-              onPress={() => updateSettings({ pollIntervalMs: v })}
-              style={[styles.smallBtn, settings.pollIntervalMs === v && { backgroundColor: theme.colors.primary }]}>
-              <Text style={[styles.smallBtnText, settings.pollIntervalMs === v && { color: '#fff' }]}>
-                {v / 1000}s
+              key={opt.val}
+              onPress={() => updateSettings({ pollIntervalMs: opt.val })}
+              style={[
+                styles.pollOptionBtn,
+                settings.pollIntervalMs === opt.val && styles.pollOptionBtnActive,
+              ]}>
+              <Text
+                style={[
+                  styles.pollOptionTitle,
+                  settings.pollIntervalMs === opt.val && styles.pollOptionTitleActive,
+                ]}>
+                {opt.label}
+              </Text>
+              <Text
+                style={[
+                  styles.pollOptionDesc,
+                  settings.pollIntervalMs === opt.val && styles.pollOptionDescActive,
+                ]}>
+                {opt.desc}
               </Text>
             </TouchableOpacity>
           ))}
+        </View>
+      </View>
+
+      {/* Features & Capabilities */}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Features & Capabilities</Text>
+        <View style={{ gap: 10, marginTop: 8 }}>
+          <View style={styles.featureRow}>
+            <Text style={styles.featureIcon}>⚡</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.featureName}>1-Click Zero-Key Pairing</Text>
+              <Text style={styles.featureDesc}>Authorize instantly via OctoPrint Application Keys plugin</Text>
+            </View>
+          </View>
+          <View style={styles.featureRow}>
+            <Text style={styles.featureIcon}>📹</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.featureName}>30+ FPS MJPEG Live Camera Feed</Text>
+              <Text style={styles.featureDesc}>Hardware-accelerated live stream with snapshot & HUD overlay</Text>
+            </View>
+          </View>
+          <View style={styles.featureRow}>
+            <Text style={styles.featureIcon}>📐</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.featureName}>2D & 3D Layer Visualizer</Text>
+              <Text style={styles.featureDesc}>Inspect interactive layer toolpaths and print bounds</Text>
+            </View>
+          </View>
+          <View style={styles.featureRow}>
+            <Text style={styles.featureIcon}>🕹️</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.featureName}>Full Machine Control</Text>
+              <Text style={styles.featureDesc}>Jog XYZ, extruder feed, heated bed/nozzle presets, and fan speed</Text>
+            </View>
+          </View>
+          <View style={styles.featureRow}>
+            <Text style={styles.featureIcon}>💻</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.featureName}>Interactive Terminal Console</Text>
+              <Text style={styles.featureDesc}>Direct G-code terminal with quick chip macros</Text>
+            </View>
+          </View>
+        </View>
+      </View>
+
+      {/* Open Source & Community */}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Open Source & Support</Text>
+        <Text style={[styles.muted, { marginBottom: 12 }]}>
+          OctoPulse is free, open-source software built for the 3D printing community.
+        </Text>
+
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <TouchableOpacity onPress={openGitHub} style={[styles.primaryBtn, { flex: 1, marginTop: 0 }]}>
+            <Text style={styles.primaryBtnText}>⭐ GitHub Repo</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={openIssues}
+            style={[styles.smallBtn, { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.bgCardElevated }]}>
+            <Text style={styles.smallBtnText}>🐛 Report Issue</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* About */}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>About OctoPulse</Text>
+        <View style={styles.aboutRow}>
+          <Text style={styles.aboutLabel}>Version</Text>
+          <Text style={styles.aboutValue}>1.0.0 (Release)</Text>
+        </View>
+        <View style={styles.aboutRow}>
+          <Text style={styles.aboutLabel}>Connected Printers</Text>
+          <Text style={styles.aboutValue}>{printers.length} online / registered</Text>
+        </View>
+        <View style={[styles.aboutRow, { borderBottomWidth: 0 }]}>
+          <Text style={styles.aboutLabel}>License</Text>
+          <Text style={styles.aboutValue}>MIT Open Source</Text>
         </View>
       </View>
     </ScrollView>
@@ -1741,15 +1982,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   terminalSendText: { color: '#fff', fontSize: 12, fontWeight: '800' },
-  settingRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  settingLabel: { color: theme.colors.text, fontSize: 13, fontWeight: '600' },
   bottomNav: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1847,4 +2079,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   pairingCancelText: { color: theme.colors.textMuted, fontSize: 13, fontWeight: '700' },
+  settingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8 },
+  settingLabel: { color: theme.colors.text, fontSize: 13, fontWeight: '700' },
+  settingSub: { color: theme.colors.textMuted, fontSize: 11, marginTop: 2 },
+  settingDivider: { height: 1, backgroundColor: theme.colors.border, marginVertical: 6 },
+  pollOptionBtn: {
+    flex: 1,
+    backgroundColor: theme.colors.bg,
+    borderRadius: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    alignItems: 'center',
+  },
+  pollOptionBtnActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
+  pollOptionTitle: { color: theme.colors.textMuted, fontSize: 11, fontWeight: '800', textAlign: 'center' },
+  pollOptionTitleActive: { color: '#fff' },
+  pollOptionDesc: { color: theme.colors.textDim, fontSize: 9, marginTop: 2, textAlign: 'center' },
+  pollOptionDescActive: { color: '#e0f2fe' },
+  featureRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 4 },
+  featureIcon: { fontSize: 20 },
+  featureName: { color: theme.colors.text, fontSize: 13, fontWeight: '700' },
+  featureDesc: { color: theme.colors.textMuted, fontSize: 11, marginTop: 1 },
+  aboutRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  aboutLabel: { color: theme.colors.textMuted, fontSize: 12 },
+  aboutValue: { color: theme.colors.text, fontSize: 12, fontWeight: '700' },
 });

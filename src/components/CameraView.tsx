@@ -14,6 +14,7 @@ import {
 import { theme } from '../theme';
 import { PrinterConnection, PrinterStatus } from '../types';
 import { getCameraSettings, baseUrl } from '../services/octoprint';
+import { formatDuration } from '../utils/format';
 
 let WebView: any = null;
 try {
@@ -385,6 +386,12 @@ export function CameraView({
                   <Text style={styles.hudLabel}>PROGRESS</Text>
                   <Text style={styles.hudValue}>
                     {status.job?.progress?.completion ? `${status.job.progress.completion.toFixed(1)}%` : '0%'}
+                  </Text>
+                </View>
+                <View style={styles.hudItem}>
+                  <Text style={styles.hudLabel}>TIME LEFT</Text>
+                  <Text style={styles.hudValue}>
+                    {status.job?.progress?.printTimeLeft ? formatDuration(status.job.progress.printTimeLeft) : '--'}
                   </Text>
                 </View>
                 <View style={styles.hudItem}>

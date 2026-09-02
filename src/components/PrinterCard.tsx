@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { theme } from '../theme';
 import { PrinterConnection, PrinterStatus } from '../types';
 import Svg, { Circle } from 'react-native-svg';
+import { formatDuration } from '../utils/format';
 
 function ProgressRing({ progress, size=56, stroke=6 }: { progress: number; size?: number; stroke?: number }) {
   const r = (size - stroke)/2;
@@ -53,7 +54,9 @@ export function PrinterCard({ printer, status, onPress, onLongPress }: { printer
             </View>
           </View>
           {isPrinting && status?.job.progress.printTimeLeft ? (
-            <Text style={styles.timeLeft}>{Math.floor((status.job.progress.printTimeLeft||0)/60)}m left • {Math.floor((status.job.progress.printTime||0)/60)}m elapsed</Text>
+            <Text style={styles.timeLeft}>
+              {formatDuration(status.job.progress.printTimeLeft)} left • {formatDuration(status.job.progress.printTime)} elapsed
+            </Text>
           ) : null}
         </View>
         <ProgressRing progress={completion} />

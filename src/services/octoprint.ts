@@ -156,7 +156,7 @@ export async function getCameraSettings(p: PrinterConnection): Promise<CameraSet
       const probe = await probeAlternateWebcamPort(p, base);
       if (probe && probe.streamUrl) {
         resolvedStream = probe.streamUrl;
-        resolvedSnapshot = probe.snapshotUrl;
+        resolvedSnapshot = probe.snapshotUrl || '';
       }
     }
 
@@ -268,28 +268,30 @@ async function probeAlternateWebcamPort(p: PrinterConnection, base: string): Pro
 }
 
 export async function getFileContent(p: PrinterConnection, path: string): Promise<string> {
-  const encodedPath = path.split('/').map(seg => encodeURIComponent(seg)).join('/');
+  const cleanPath = path.replace(/^local\//, '');
+  const encodedPath = cleanPath.split('/').map(seg => encodeURIComponent(seg)).join('/');
   const base = baseUrl(p);
-  const headers = { 'X-Api-Key': p.apiKey } as any;
+  const headers = { 'X-Api-Key': p.apiKey, Range: 'bytes=0-1572864' } as any;
   const dl = `${base}/downloads/files/local/${encodedPath}`;
   try {
     const res = await fetch(dl, { headers });
-    if (res.ok) return await res.text();
+    if (res.ok || res.status === 206) return await res.text();
   } catch {}
   const dl2 = `${base}/api/files/local/${encodedPath}?download=true`;
   const res2 = await fetch(dl2, { headers });
-  if (!res2.ok) throw new Error('Download failed: ' + res2.status);
-  const ct = res2.headers.get('content-type') || '';
-  if (ct.includes('application/json')) {
-    const j = await res2.json().catch(() => null);
-    if (j && j.download) {
-      const targetUrl = j.download.startsWith('http') ? j.download : `${base}${j.download}`;
-      const res3 = await fetch(targetUrl, { headers });
-      if (!res3.ok) throw new Error('Download redirect failed');
-      return await res3.text();
+  if (res2.ok || res2.status === 206) {
+    const ct = res2.headers.get('content-type') || '';
+    if (ct.includes('application/json')) {
+      const j = await res2.json().catch(() => null);
+      if (j && j.download) {
+        const targetUrl = j.download.startsWith('http') ? j.download : `${base}${j.download}`;
+        const res3 = await fetch(targetUrl, { headers });
+        if (res3.ok || res3.status === 206) return await res3.text();
+      }
     }
+    return await res2.text();
   }
-  return await res2.text();
+  throw new Error('Download failed: ' + res2.status);
 }
 
 export async function printerCommand(p: PrinterConnection, command: string) {

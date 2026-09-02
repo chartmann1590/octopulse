@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://chartmann1590.github.io/octopulse/sitemap.xml

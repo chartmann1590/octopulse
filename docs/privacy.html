@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Privacy Policy — OctoPulse</title>
+  <meta name="description" content="Privacy Policy for OctoPulse — OctoPrint Companion. Learn how we handle ads (AdMob), permissions, and your data. No print data is sold. Data stays on your device." />
+  <meta name="theme-color" content="#020617" />
+  <link rel="icon" href="assets/favicon.png" />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="canonical" href="https://chartmann1590.github.io/octopulse/privacy.html" />
+</head>
+<body>
+  <div class="bg-wrap"><div class="grid-overlay"></div></div>
+
+  <nav class="nav">
+    <div class="container nav-inner">
+      <a href="index.html" class="brand">
+        <div class="brand-mark">OP</div>
+        <div>
+          <div class="brand-name">OctoPulse</div>
+          <div class="brand-sub">Monitor • Control • Print</div>
+        </div>
+      </a>
+      <div class="nav-links">
+        <a href="index.html#features">Features</a>
+        <a href="index.html#how">How it works</a>
+        <a href="index.html#ads">Ads</a>
+        <a href="privacy.html" style="color:var(--text)">Privacy</a>
+      </div>
+      <div class="nav-cta">
+        <a href="index.html#download" class="btn btn-ghost btn-sm">Get notified</a>
+        <a href="https://github.com/chartmann1590/octopulse" target="_blank" rel="noopener" class="btn btn-primary btn-sm">GitHub →</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container" style="padding:28px 20px 40px">
+    <div class="breadcrumb"><a href="index.html">Home</a> / Privacy Policy</div>
+
+    <div class="prose">
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:6px">
+        <span class="badge" style="background:rgba(34,197,94,0.10);border-color:rgba(34,197,94,0.18);color:#86efac"><span class="badge-dot"></span> Effective • September 2, 2026</span>
+        <span class="badge-soft">Version 1.0 • For OctoPulse Android</span>
+      </div>
+
+      <h1 style="margin-top:10px">Privacy Policy</h1>
+      <div class="meta-line">
+        <span>📦 App: <strong style="color:var(--text)">OctoPulse</strong> — OctoPrint Companion</span>
+        <span>🏢 Publisher: OctoPulse / Charles Hartmann</span>
+        <span>📧 <a href="mailto:hello@octopulse.app">hello@octopulse.app</a></span>
+      </div>
+
+      <div class="callout">
+        <strong>TL;DR:</strong> OctoPulse works on your local Wi-Fi. Your printer hosts, API keys and camera URLs stay encrypted on your device. We don’t run servers that see your prints. The app is free and shows ads via Google AdMob (which uses your Advertising ID). We don’t sell your data.
+      </div>
+
+      <div class="toc" aria-label="Table of contents">
+        <a href="#overview">Overview</a>
+        <a href="#not-collected">No print data collected</a>
+        <a href="#data-we-process">Data we process</a>
+        <a href="#ads">Ads &amp; AdMob</a>
+        <a href="#permissions">Permissions</a>
+        <a href="#storage">Local storage</a>
+        <a href="#third-parties">Third-party SDKs</a>
+        <a href="#data-safety">Play Data Safety</a>
+        <a href="#children">Children</a>
+        <a href="#rights">Your rights</a>
+        <a href="#security">Security</a>
+        <a href="#retention">Retention</a>
+        <a href="#changes">Changes</a>
+        <a href="#contact">Contact</a>
+        <a href="#terms">Terms</a>
+      </div>
+
+      <h2 id="overview">1. Overview &amp; scope</h2>
+      <p>This Privacy Policy describes how OctoPulse (“we”, “us”, “app”) handles information when you use the OctoPulse Android application and this website (<span class="kbd">chartmann1590.github.io/octopulse</span>). It applies to all versions distributed via Google Play and via GitHub Releases (APK).</p>
+      <p>OctoPulse is a companion for <a href="https://octoprint.org" target="_blank" rel="noopener">OctoPrint</a>. The app communicates directly between your phone and your OctoPrint server over your local network (or your own VPN/reverse proxy). We do not operate a backend that stores your print files, camera feeds or API keys.</p>
+
+      <h2 id="not-collected">2. What we do <em>not</em> collect</h2>
+      <ul>
+        <li><strong>No print files or G-code content</strong> is uploaded to us.</li>
+        <li><strong>No camera video</strong> leaves your network — streams are rendered directly from OctoPrint to your device.</li>
+        <li><strong>No account required</strong> — we don’t ask for your name, phone number or OctoPrint password beyond the API key you enter (stored locally).</li>
+        <li><strong>No precise location</strong> is collected. Network discovery scans your subnet locally; no GPS.</li>
+        <li><strong>No selling of data</strong> — we do not sell, rent or trade your information.</li>
+      </ul>
+
+      <h2 id="data-we-process">3. Data we process &amp; why</h2>
+      <table class="table">
+        <thead><tr><th>Category</th><th>Examples</th><th>Purpose &amp; legal basis</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Printer config (local only)</strong></td><td>Host/IP, port, HTTPS flag, nickname, API key / Application Key</td><td>To connect to your OctoPrint. Stored encrypted on device. Basis: contract / legitimate interest (core function).</td></tr>
+          <tr><td><strong>App settings</strong></td><td>Poll interval, notification toggles, theme, filament presets</td><td>To remember preferences. Local only.</td></tr>
+          <tr><td><strong>Notifications</strong></td><td>Print finished / error / milestone prefs</td><td>To send local notifications you requested.</td></tr>
+          <tr><td><strong>Diagnostics (Firebase)</strong></td><td>Crash traces, performance metrics, device model/OS</td><td>To fix bugs. See §5. Basis: legitimate interest.</td></tr>
+          <tr><td><strong>Advertising ID &amp; ad signals</strong></td><td>Google Advertising ID (<span class="kbd">AD_ID</span>), IP (transient), ad interaction</td><td>To show and measure ads via AdMob. Consent where required. See §4.</td></tr>
+          <tr><td><strong>Website analytics (if any)</strong></td><td>GitHub Pages may log aggregate visits</td><td>Basic hosting logs. No custom tracker on site.</td></tr>
+        </tbody>
+      </table>
+      <p>Where EU/UK GDPR applies, we rely on performance of contract and legitimate interests; for ads personalization we rely on consent where required. You can withdraw consent via Android ad settings.</p>
+
+      <h2 id="ads">4. Advertising — Google AdMob (contains ads)</h2>
+      <div class="callout warn"><strong>Contains ads disclosure:</strong> OctoPulse is ad-supported. It displays banner ads and occasional interstitial ads using <strong>Google AdMob</strong> (<span class="kbd">react-native-google-mobile-ads</span>). This is disclosed on the Play Store listing and in-app.</div>
+      <h3>4.1 What AdMob uses</h3>
+      <p>Google’s ad SDK may collect and process:</p>
+      <ul>
+        <li>Google Advertising ID (<span class="kbd">com.google.android.gms.permission.AD_ID</span>) — a resettable identifier for ads.</li>
+        <li>IP address, coarse device info (model, OS version, language, screen), app interaction with ads.</li>
+        <li>Ad performance and fraud prevention signals.</li>
+      </ul>
+      <p>This data is processed by Google under <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google’s Privacy Policy</a> and <a href="https://policies.google.com/technologies/ads" target="_blank" rel="noopener">How Google uses data when you use our partners’ sites or apps</a>. We do not control Google’s ad personalization beyond the SDK integration.</p>
+      <h3>4.2 How ads appear</h3>
+      <ul>
+        <li><strong>Banners:</strong> small anchored banners (e.g., 320×50) at the bottom of some screens. Fixed, never over controls.</li>
+        <li><strong>Interstitials:</strong> full-screen ads shown at natural breaks (e.g., after adding a printer) — never while printing or during printer control.</li>
+        <li><strong>No rewarded / video ads with sound</strong> that auto-play.</li>
+        <li>Test IDs are used in development (<span class="kbd">ca-app-pub-3940256099942544~…</span>), production IDs will be configured at release.</li>
+      </ul>
+      <h3>4.3 Your choices</h3>
+      <ul>
+        <li><strong>Reset / delete Advertising ID:</strong> Android 13+ → Settings → Privacy → Ads → Reset/Delete.</li>
+        <li><strong>Opt out of personalized ads:</strong> Same screen → “Delete advertising ID” or turn on “Opt out of Ads Personalization” (older Android).</li>
+        <li>OctoPulse respects the system opt-out; you will still see ads but they will be less personalized.</li>
+        <li>For more, see <a href="https://support.google.com/googleplay/answer/3405269" target="_blank" rel="noopener">Google Play — Advertising ID help</a> and <a href="https://adssettings.google.com/" target="_blank" rel="noopener">adssettings.google.com</a>.</li>
+      </ul>
+
+      <h2 id="permissions">5. Android permissions explained</h2>
+      <table class="table">
+        <thead><tr><th>Permission</th><th>Why needed</th><th>Optional?</th></tr></thead>
+        <tbody>
+          <tr><td><span class="kbd">INTERNET</span></td><td>Connect to OctoPrint REST API, fetch files, stream camera, load ads &amp; crash reports.</td><td>Required</td></tr>
+          <tr><td><span class="kbd">ACCESS_NETWORK_STATE</span>, <span class="kbd">ACCESS_WIFI_STATE</span></td><td>Detect Wi-Fi vs mobile, enable discovery, avoid scans when offline.</td><td>Required</td></tr>
+          <tr><td><span class="kbd">CHANGE_WIFI_MULTICAST_STATE</span></td><td>mDNS/Bonjour discovery of OctoPrint on local network.</td><td>Required for auto-discovery; manual IP still works if denied on some OEMs</td></tr>
+          <tr><td><span class="kbd">POST_NOTIFICATIONS</span></td><td>Notify on print completed / error / milestones (if you enable).</td><td>Optional — you can deny; alerts just won’t show</td></tr>
+          <tr><td><span class="kbd">RECEIVE_BOOT_COMPLETED</span></td><td>Reschedule background poll after reboot (if notifications enabled).</td><td>Optional</td></tr>
+          <tr><td><span class="kbd">VIBRATE</span></td><td>Haptic feedback for notifications.</td><td>Optional</td></tr>
+          <tr><td><span class="kbd">AD_ID</span></td><td>Provide Advertising ID to AdMob for ad serving/measurement.</td><td>Required for ads; you can reset/delete at system level</td></tr>
+          <tr><td><span class="kbd">usesCleartextTraffic=true</span></td><td>Allow HTTP to OctoPrint on your LAN (most OctoPi installs are HTTP). Only for hosts you configure.</td><td>—</td></tr>
+        </tbody>
+      </table>
+      <p>We do not request Location, Camera, Microphone, Contacts, Storage broad access or SMS/Phone permissions.</p>
+
+      <h2 id="storage">6. Data storage — on your device only</h2>
+      <ul>
+        <li><strong>Encrypted storage:</strong> API keys / Application Keys are stored via <span class="kbd">expo-secure-store</span> (Android Keystore), printers list via <span class="kbd">AsyncStorage</span>.</li>
+        <li><strong>Local only:</strong> No sync to our servers. Uninstalling the app removes this data (unless Android backup is enabled — then it’s in your Google Drive backup, not ours).</li>
+        <li><strong>Camera snapshots:</strong> Rendered in RAM/WebView; not saved unless you explicitly download.</li>
+        <li><strong>Logs:</strong> We don’t log your OctoPrint requests centrally. On-device logs for discovery/terminal are ephemeral.</li>
+      </ul>
+
+      <h2 id="third-parties">7. Third-party SDKs &amp; services</h2>
+      <table class="table">
+        <thead><tr><th>Service</th><th>Provider</th><th>Purpose</th><th>Privacy</th></tr></thead>
+        <tbody>
+          <tr><td>Google Mobile Ads (AdMob)</td><td>Google LLC</td><td>Monetization via ads</td><td><a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google Privacy</a> • <a href="https://support.google.com/admob/answer/6128543" target="_blank" rel="noopener">AdMob</a></td></tr>
+          <tr><td>Firebase Crashlytics, Performance</td><td>Google LLC</td><td>Crash &amp; perf diagnostics</td><td><a href="https://firebase.google.com/support/privacy" target="_blank" rel="noopener">Firebase Privacy</a></td></tr>
+          <tr><td>Expo / React Native</td><td>Expo / Meta</td><td>App framework</td><td>Local only; no Expo Go analytics in standalone build</td></tr>
+          <tr><td>GitHub Pages (website)</td><td>GitHub, Inc.</td><td>Hosting this site</td><td><a href="https://docs.github.com/en/site-policy/privacy-policies/github-privacy-statement" target="_blank" rel="noopener">GitHub Privacy</a></td></tr>
+        </tbody>
+      </table>
+      <p>You can learn about Firebase data collection and controls in <a href="https://firebase.google.com/support/privacy#firebase_data_processing" target="_blank" rel="noopener">Firebase Data Processing</a>.</p>
+
+      <h2 id="data-safety">8. Google Play Data Safety</h2>
+      <p>For Play Console Data Safety section we declare:</p>
+      <ul>
+        <li><strong>Data collected:</strong> Advertising ID, app interactions (ad taps), diagnostics (crash logs). Committed as <em>not</em> sold, but shared with Google ad/ analytics providers per their SDKs.</li>
+        <li><strong>Data not collected:</strong> Name, email (unless you voluntarily join waitlist), precise location, contacts, files content.</li>
+        <li><strong>Encryption in transit:</strong> Yes (HTTPS where OctoPrint allows; on LAN cleartext is device-to-printer inside your network, never to us).</li>
+        <li><strong>Data deletion:</strong> Use Android Settings → Apps → OctoPulse → Clear data, or uninstall. Contact us to delete any waitlist email.</li>
+        <li>This policy is the canonical source; Play Data Safety summary mirrors it.</li>
+      </ul>
+
+      <h2 id="children">9. Children’s privacy</h2>
+      <p>OctoPulse is not directed to children under 13. We do not knowingly collect personal information from children. Ad personalization via AdMob is subject to Google’s age policies; if you are a parent and believe your child’s data was processed in error, contact us at <a href="mailto:hello@octopulse.app">hello@octopulse.app</a> for removal.</p>
+
+      <h2 id="rights">10. Your rights &amp; choices</h2>
+      <ul>
+        <li><strong>Access / delete on-device data:</strong> Settings → Apps → OctoPulse → Storage → Clear data, or remove individual printers in the app.</li>
+        <li><strong>Withdraw ad consent:</strong> Reset/Delete Advertising ID in Android Settings; disable personalized ads.</li>
+        <li><strong>Notifications:</strong> Toggle per-printer or globally in OctoPulse → ALERTS; or system notification settings.</li>
+        <li><strong>Waitlist email:</strong> Email <a href="mailto:hello@octopulse.app?subject=Delete%20my%20waitlist%20email">hello@octopulse.app</a> with subject “Delete my waitlist email” and we’ll remove it within 30 days.</li>
+        <li><strong>GDPR / CCPA:</strong> EU/EEA/UK and California residents may request access/deletion by contacting us. We will respond within 30 days (GDPR) / 45 days (CCPA).</li>
+      </ul>
+
+      <h2 id="security">11. Security</h2>
+      <p>We use Android Keystore-backed SecureStore for secrets, don’t transmit your API keys to us, and minimize attack surface (no broad storage permissions). However, local-network HTTP between phone and OctoPrint is not end-to-end encrypted across the internet if you expose OctoPrint publicly — use HTTPS/reverse proxy or VPN if you need remote access.</p>
+
+      <h2 id="retention">12. Retention</h2>
+      <ul>
+        <li>On-device printer configs persist until you delete them or uninstall.</li>
+        <li>Waitlist emails are kept until Play launch + 6 months, then deleted.</li>
+        <li>Firebase crash logs are retained per Google’s default retention (up to ~90 days aggregated).</li>
+        <li>AdMob data retention is governed by Google.</li>
+      </ul>
+
+      <h2 id="changes">13. Changes to this policy</h2>
+      <p>We may update this policy when features or laws change. We’ll bump the “Effective” date and, for material changes, note it in the app and on this page. Continued use after changes means you accept the new policy.</p>
+
+      <h2 id="contact">14. Contact &amp; Data Controller</h2>
+      <p>
+        <strong>OctoPulse</strong><br>
+        Contact: <a href="mailto:hello@octopulse.app">hello@octopulse.app</a><br>
+        GitHub: <a href="https://github.com/chartmann1590/octopulse/issues" target="_blank" rel="noopener">github.com/chartmann1590/octopulse/issues</a><br>
+        Address: Provided on request for GDPR correspondence.<br>
+        For ad/privacy questions, include “Privacy” in your subject line.
+      </p>
+
+      <h2 id="terms">15. Terms of Use (summary)</h2>
+      <p>OctoPulse is provided “as is” under the MIT License (<a href="https://github.com/chartmann1590/octopulse/blob/main/LICENSE" target="_blank" rel="noopener">LICENSE</a>). We’re not liable for print failures, thermal issues or network disruptions. You’re responsible for securing your OctoPrint API key and for complying with your printer’s safety guidelines. Ads are provided by Google; we don’t endorse advertised content.</p>
+      <p>For full license, see <a href="https://github.com/chartmann1590/octopulse/blob/main/LICENSE" target="_blank" rel="noopener">github.com/chartmann1590/octopulse/LICENSE</a>.</p>
+
+      <div style="margin-top:28px;padding:16px;border-radius:14px;background:rgba(15,23,42,0.60);border:1px solid rgba(255,255,255,0.06)">
+        <div style="font-weight:700;margin-bottom:6px">Need a plain-text version for Play Console?</div>
+        <p style="margin:0">Copy the canonical URL: <span class="kbd">https://chartmann1590.github.io/octopulse/privacy.html</span> — this is the official privacy policy URL to paste in Play Console → Policy → Privacy policy.</p>
+      </div>
+
+      <div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap">
+        <a href="index.html" class="btn btn-ghost btn-sm">← Back to home</a>
+        <a href="mailto:hello@octopulse.app?subject=OctoPulse%20Privacy%20question" class="btn btn-primary btn-sm">Contact us →</a>
+      </div>
+
+      <p style="margin-top:28px;font-size:12px;color:var(--text-dim)">This policy does not constitute legal advice. For compliance review, consult qualified counsel. Template version 2026-09-02.</p>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-bottom" style="margin-top:0;border-top:0;padding-top:0">
+        <span>© 2026 OctoPulse • <a href="index.html" style="color:var(--primary-light)">Home</a> • <a href="privacy.html" style="color:var(--primary-light)">Privacy</a></span>
+        <span>MIT • Contains ads • <a href="https://github.com/chartmann1590/octopulse" style="color:var(--text-muted)">GitHub</a></span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

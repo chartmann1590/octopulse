@@ -55,8 +55,17 @@ secrets/
 # typescript
 *.tsbuildinfo
 
-# generated native folders (keep for debugging but ignore by default? we keep android/ for prebuild)
-/android
+# Android build artifacts
+android/.gradle/
+android/app/build/
+android/build/
+android/.cxx/
+android/app/.cxx/
+android/local.properties
+android/*.iml
+android/app/*.iml
+
+# iOS
 /ios
 
 # logs

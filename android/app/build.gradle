@@ -15,6 +15,8 @@ react {
     codegenDir = new File(["node", "--print", "require.resolve('@react-native/codegen/package.json', { paths: [require.resolve('react-native/package.json')] })"].execute(null, rootDir).text.trim()).getParentFile().getAbsoluteFile()
 
     enableBundleCompression = (findProperty('android.enableBundleCompression') ?: false).toBoolean()
+    // Embed JS bundle inside debug APK
+    debuggableVariants = []
     // Use Expo CLI to bundle the app, this ensures the Metro config
     // works correctly with Expo projects.
     cliFile = new File(["node", "--print", "require.resolve('@expo/cli', { paths: [require.resolve('expo/package.json')] })"].execute(null, rootDir).text.trim())
@@ -92,9 +94,8 @@ android {
         applicationId "com.charles.octopulse"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        // versionCode/versionName are overridden by Expo prebuild from app.json; fall back to env for CI increments
-        versionCode (findProperty('octopulse.versionCode') ?: System.getenv('VERSION_CODE') ?: "1") as int
-        versionName (findProperty('octopulse.versionName') ?: System.getenv('VERSION_NAME') ?: "1.0.0")
+        versionCode 1
+        versionName "1.0.0"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }
@@ -169,6 +170,8 @@ android {
 }
 
 dependencies {
+    // Free on-device ML Kit Translation (Google ML Kit) - no API key required
+    implementation 'com.google.mlkit:translate:17.0.3'
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
 

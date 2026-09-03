@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { AppText } from './AppText';
+import { AppTextInput } from './AppTextInput';
 import {
   View,
   Text,
@@ -108,7 +110,7 @@ export function CameraView({
     if (!activeStream) {
       return (
         <View style={styles.centerContainer}>
-          <Text style={styles.hint}>No camera stream available</Text>
+          <AppText style={styles.hint}>No camera stream available</AppText>
         </View>
       );
     }
@@ -255,7 +257,7 @@ export function CameraView({
 
     return (
       <View style={styles.centerContainer}>
-        <Text style={styles.hint}>Camera disconnected</Text>
+        <AppText style={styles.hint}>Camera disconnected</AppText>
       </View>
     );
   };
@@ -264,26 +266,26 @@ export function CameraView({
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerTitleRow}>
-          <Text style={styles.title}>Live Camera Feed</Text>
+          <AppText style={styles.title}>Live Camera Feed</AppText>
           <View style={styles.liveBadge}>
             <View style={styles.liveDot} />
-            <Text style={styles.liveText}>LIVE</Text>
+            <AppText style={styles.liveText}>LIVE</AppText>
           </View>
         </View>
         <View style={styles.modeSwitch}>
           <TouchableOpacity
             onPress={() => setMode('stream')}
             style={[styles.modeBtn, mode === 'stream' && styles.modeBtnActive]}>
-            <Text style={[styles.modeText, mode === 'stream' && styles.modeTextActive]}>
+            <AppText style={[styles.modeText, mode === 'stream' && styles.modeTextActive]}>
               Stream
-            </Text>
+            </AppText>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => setMode('snapshot')}
             style={[styles.modeBtn, mode === 'snapshot' && styles.modeBtnActive]}>
-            <Text style={[styles.modeText, mode === 'snapshot' && styles.modeTextActive]}>
+            <AppText style={[styles.modeText, mode === 'snapshot' && styles.modeTextActive]}>
               Snapshot
-            </Text>
+            </AppText>
           </TouchableOpacity>
         </View>
       </View>
@@ -292,13 +294,13 @@ export function CameraView({
         {loading ? (
           <View style={styles.centerContainer}>
             <ActivityIndicator color={theme.colors.primary} size="large" />
-            <Text style={styles.hint}>Loading camera feed...</Text>
+            <AppText style={styles.hint}>Loading camera feed...</AppText>
           </View>
         ) : error ? (
           <View style={styles.centerContainer}>
-            <Text style={styles.errorText}>{error}</Text>
+            <AppText style={styles.errorText}>{error}</AppText>
             <TouchableOpacity onPress={() => setRefreshKey(k => k + 1)} style={styles.btnSmall}>
-              <Text style={styles.btnSmallText}>↻ Retry</Text>
+              <AppText style={styles.btnSmallText}>↻ Retry</AppText>
             </TouchableOpacity>
           </View>
         ) : (
@@ -309,7 +311,7 @@ export function CameraView({
           onPress={() => setFullscreen(true)}
           style={styles.fullscreenBtn}
           activeOpacity={0.8}>
-          <Text style={styles.fullscreenBtnText}>⛶ Fullscreen</Text>
+          <AppText style={styles.fullscreenBtnText}>⛶ Fullscreen</AppText>
         </TouchableOpacity>
       </View>
 
@@ -317,31 +319,31 @@ export function CameraView({
         <TouchableOpacity
           onPress={() => setRefreshKey(k => k + 1)}
           style={styles.actionBtn}>
-          <Text style={styles.actionBtnText}>↻ Refresh</Text>
+          <AppText style={styles.actionBtnText}>↻ Refresh</AppText>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => setFlipH(v => !v)}
           style={[styles.actionBtn, flipH && styles.actionBtnActive]}>
-          <Text style={[styles.actionBtnText, flipH && styles.actionBtnTextActive]}>
+          <AppText style={[styles.actionBtnText, flipH && styles.actionBtnTextActive]}>
             ⇄ Flip H
-          </Text>
+          </AppText>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => setFlipV(v => !v)}
           style={[styles.actionBtn, flipV && styles.actionBtnActive]}>
-          <Text style={[styles.actionBtnText, flipV && styles.actionBtnTextActive]}>
+          <AppText style={[styles.actionBtnText, flipV && styles.actionBtnTextActive]}>
             ⇅ Flip V
-          </Text>
+          </AppText>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => setRotation(r => ((r + 90) % 360) as any)}
           style={styles.actionBtn}>
-          <Text style={styles.actionBtnText}>↷ {rotation}°</Text>
+          <AppText style={styles.actionBtnText}>↷ {rotation}°</AppText>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => setShowConfig(true)}
           style={styles.actionBtn}>
-          <Text style={styles.actionBtnText}>⚙ URL</Text>
+          <AppText style={styles.actionBtnText}>⚙ URL</AppText>
         </TouchableOpacity>
       </View>
 
@@ -354,13 +356,13 @@ export function CameraView({
         <View style={styles.fullscreenModal}>
           <View style={styles.fsTopBar}>
             <View>
-              <Text style={styles.fsTitle}>{printer.name} • Live Stream</Text>
-              <Text style={styles.fsSub}>{activeStream}</Text>
+              <AppText style={styles.fsTitle}>{printer.name} • Live Stream</AppText>
+              <AppText style={styles.fsSub}>{activeStream}</AppText>
             </View>
             <TouchableOpacity
               onPress={() => setFullscreen(false)}
               style={styles.fsCloseBtn}>
-              <Text style={styles.fsCloseText}>✕ Close</Text>
+              <AppText style={styles.fsCloseText}>✕ Close</AppText>
             </TouchableOpacity>
           </View>
 
@@ -371,32 +373,32 @@ export function CameraView({
             {status && (
               <View style={styles.hudOverlay}>
                 <View style={styles.hudItem}>
-                  <Text style={styles.hudLabel}>HOTEND</Text>
-                  <Text style={styles.hudValue}>
+                  <AppText style={styles.hudLabel}>HOTEND</AppText>
+                  <AppText style={styles.hudValue}>
                     {status.temps.tool0 ? `${Math.round(status.temps.tool0.actual)}° / ${Math.round(status.temps.tool0.target)}°` : '--'}
-                  </Text>
+                  </AppText>
                 </View>
                 <View style={styles.hudItem}>
-                  <Text style={styles.hudLabel}>BED</Text>
-                  <Text style={styles.hudValue}>
+                  <AppText style={styles.hudLabel}>BED</AppText>
+                  <AppText style={styles.hudValue}>
                     {status.temps.bed ? `${Math.round(status.temps.bed.actual)}° / ${Math.round(status.temps.bed.target)}°` : '--'}
-                  </Text>
+                  </AppText>
                 </View>
                 <View style={styles.hudItem}>
-                  <Text style={styles.hudLabel}>PROGRESS</Text>
-                  <Text style={styles.hudValue}>
+                  <AppText style={styles.hudLabel}>PROGRESS</AppText>
+                  <AppText style={styles.hudValue}>
                     {status.job?.progress?.completion ? `${status.job.progress.completion.toFixed(1)}%` : '0%'}
-                  </Text>
+                  </AppText>
                 </View>
                 <View style={styles.hudItem}>
-                  <Text style={styles.hudLabel}>TIME LEFT</Text>
-                  <Text style={styles.hudValue}>
+                  <AppText style={styles.hudLabel}>TIME LEFT</AppText>
+                  <AppText style={styles.hudValue}>
                     {status.job?.progress?.printTimeLeft ? formatDuration(status.job.progress.printTimeLeft) : '--'}
-                  </Text>
+                  </AppText>
                 </View>
                 <View style={styles.hudItem}>
-                  <Text style={styles.hudLabel}>STATE</Text>
-                  <Text style={styles.hudValue}>{status.state || 'Idle'}</Text>
+                  <AppText style={styles.hudLabel}>STATE</AppText>
+                  <AppText style={styles.hudValue}>{status.state || 'Idle'}</AppText>
                 </View>
               </View>
             )}
@@ -406,29 +408,29 @@ export function CameraView({
             <TouchableOpacity
               onPress={() => setRefreshKey(k => k + 1)}
               style={styles.actionBtn}>
-              <Text style={styles.actionBtnText}>↻ Reconnect</Text>
+              <AppText style={styles.actionBtnText}>↻ Reconnect</AppText>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => setFlipH(v => !v)}
               style={[styles.actionBtn, flipH && styles.actionBtnActive]}>
-              <Text style={[styles.actionBtnText, flipH && styles.actionBtnTextActive]}>Flip H</Text>
+              <AppText style={[styles.actionBtnText, flipH && styles.actionBtnTextActive]}>Flip H</AppText>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => setFlipV(v => !v)}
               style={[styles.actionBtn, flipV && styles.actionBtnActive]}>
-              <Text style={[styles.actionBtnText, flipV && styles.actionBtnTextActive]}>Flip V</Text>
+              <AppText style={[styles.actionBtnText, flipV && styles.actionBtnTextActive]}>Flip V</AppText>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => setRotation(r => ((r + 90) % 360) as any)}
               style={styles.actionBtn}>
-              <Text style={styles.actionBtnText}>Rotate ({rotation}°)</Text>
+              <AppText style={styles.actionBtnText}>Rotate ({rotation}°)</AppText>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => setMode(m => (m === 'stream' ? 'snapshot' : 'stream'))}
               style={[styles.actionBtn, { backgroundColor: theme.colors.primary }]}>
-              <Text style={[styles.actionBtnText, { color: '#fff' }]}>
+              <AppText style={[styles.actionBtnText, { color: '#fff' }]}>
                 {mode === 'stream' ? 'MJPEG Stream' : 'Snapshot'}
-              </Text>
+              </AppText>
             </TouchableOpacity>
           </View>
         </View>
@@ -442,13 +444,13 @@ export function CameraView({
         onRequestClose={() => setShowConfig(false)}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Camera Stream Settings</Text>
-            <Text style={styles.modalSub}>
+            <AppText style={styles.modalTitle}>Camera Stream Settings</AppText>
+            <AppText style={styles.modalSub}>
               Override OctoPrint camera stream / snapshot URL (e.g. for Octo4a or custom camera ports).
-            </Text>
+            </AppText>
 
-            <Text style={styles.inputLabel}>MJPEG Stream URL</Text>
-            <TextInput
+            <AppText style={styles.inputLabel}>MJPEG Stream URL</AppText>
+            <AppTextInput
               style={styles.modalInput}
               placeholder={streamUrl || 'http://192.168.1.50:8080/?action=stream'}
               placeholderTextColor={theme.colors.textDim}
@@ -458,8 +460,8 @@ export function CameraView({
               autoCorrect={false}
             />
 
-            <Text style={styles.inputLabel}>Snapshot URL</Text>
-            <TextInput
+            <AppText style={styles.inputLabel}>Snapshot URL</AppText>
+            <AppTextInput
               style={styles.modalInput}
               placeholder={snapshotUrl || 'http://192.168.1.50:8080/?action=snapshot'}
               placeholderTextColor={theme.colors.textDim}
@@ -477,7 +479,7 @@ export function CameraView({
                   setShowConfig(false);
                 }}
                 style={styles.modalBtnSecondary}>
-                <Text style={styles.modalBtnSecondaryText}>Reset to Default</Text>
+                <AppText style={styles.modalBtnSecondaryText}>Reset to Default</AppText>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => {
@@ -485,7 +487,7 @@ export function CameraView({
                   setShowConfig(false);
                 }}
                 style={styles.modalBtnPrimary}>
-                <Text style={styles.modalBtnPrimaryText}>Save & Apply</Text>
+                <AppText style={styles.modalBtnPrimaryText}>Save & Apply</AppText>
               </TouchableOpacity>
             </View>
           </View>

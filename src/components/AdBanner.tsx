@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { AppText } from './AppText';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { theme } from '../theme';
@@ -65,9 +66,9 @@ export function AdBanner({ unitId, size }: { unitId?: string; size?: string }) {
   return (
     <View style={styles.container}>
       <View style={styles.adBox}>
-        <Text style={styles.adLabel}>AD • {isTest ? 'TEST BANNER' : 'BANNER'}</Text>
-        <Text style={styles.adSub}>{BANNER_ID}</Text>
-        <Text style={styles.adHint}>AdMob linked • {isTest ? 'Test ID' : 'Production ID'}</Text>
+        <AppText style={styles.adLabel}>AD • {isTest ? 'TEST BANNER' : 'BANNER'}</AppText>
+        <AppText style={styles.adSub}>{BANNER_ID}</AppText>
+        <AppText style={styles.adHint}>AdMob linked • {isTest ? 'Test ID' : 'Production ID'}</AppText>
       </View>
     </View>
   );

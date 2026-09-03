@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
+import { AppText } from './AppText';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
 import Svg, { Path, G, Line, Rect, Circle } from 'react-native-svg';
 import { theme } from '../theme';
@@ -137,9 +138,9 @@ export function GCodeViewer({ gcode, status, maxLayers = 200 }: Props) {
         <View style={styles.liveBanner}>
           <View style={styles.liveBannerLeft}>
             <View style={styles.livePulseDot} />
-            <Text style={styles.liveBannerText}>
+            <AppText style={styles.liveBannerText}>
               LIVE PRINTING • {completion.toFixed(1)}% (Layer {liveLayerIndex + 1}/{layers.length})
-            </Text>
+            </AppText>
           </View>
           <TouchableOpacity
             onPress={() => {
@@ -148,9 +149,9 @@ export function GCodeViewer({ gcode, status, maxLayers = 200 }: Props) {
               if (next) setLayerIdx(liveLayerIndex);
             }}
             style={[styles.trackBtn, autoTrack && styles.trackBtnActive]}>
-            <Text style={[styles.trackBtnText, autoTrack && styles.trackBtnTextActive]}>
+            <AppText style={[styles.trackBtnText, autoTrack && styles.trackBtnTextActive]}>
               {autoTrack ? '⚡ Auto-Tracking' : 'Snap to Live'}
-            </Text>
+            </AppText>
           </TouchableOpacity>
         </View>
       )}
@@ -158,15 +159,15 @@ export function GCodeViewer({ gcode, status, maxLayers = 200 }: Props) {
       <View style={styles.toolbar}>
         <View style={styles.modeSwitch}>
           <TouchableOpacity onPress={() => setMode('2d')} style={[styles.modeBtn, mode === '2d' && styles.modeBtnActive]}>
-            <Text style={[styles.modeText, mode === '2d' && styles.modeTextActive]}>2D</Text>
+            <AppText style={[styles.modeText, mode === '2d' && styles.modeTextActive]}>2D</AppText>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => setMode('3d')} style={[styles.modeBtn, mode === '3d' && styles.modeBtnActive]}>
-            <Text style={[styles.modeText, mode === '3d' && styles.modeTextActive]}>3D Preview</Text>
+            <AppText style={[styles.modeText, mode === '3d' && styles.modeTextActive]}>3D Preview</AppText>
           </TouchableOpacity>
         </View>
-        <Text style={styles.layerInfo}>
+        <AppText style={styles.layerInfo}>
           Layer {layerIdx + 1}/{layers.length} • Z {layer?.z.toFixed(2) ?? '0.00'}mm
-        </Text>
+        </AppText>
       </View>
 
       <View style={[styles.canvasWrap, { height }]}>
@@ -247,7 +248,7 @@ export function GCodeViewer({ gcode, status, maxLayers = 200 }: Props) {
             setLayerIdx(m => Math.max(0, m - 1));
           }}
           style={styles.stepBtn}>
-          <Text style={styles.stepText}>−</Text>
+          <AppText style={styles.stepText}>−</AppText>
         </TouchableOpacity>
         <View style={styles.sliderTrack}>
           <View style={[styles.sliderFill, { width: `${((layerIdx + 1) / Math.max(1, layers.length)) * 100}%` }]} />
@@ -258,7 +259,7 @@ export function GCodeViewer({ gcode, status, maxLayers = 200 }: Props) {
             setLayerIdx(m => Math.min(layers.length - 1, m + 1));
           }}
           style={styles.stepBtn}>
-          <Text style={styles.stepText}>+</Text>
+          <AppText style={styles.stepText}>+</AppText>
         </TouchableOpacity>
       </View>
 
@@ -278,22 +279,22 @@ export function GCodeViewer({ gcode, status, maxLayers = 200 }: Props) {
                 isCurrent && styles.layerChipActive,
                 isLive && !isCurrent && styles.layerChipLive,
               ]}>
-              <Text
+              <AppText
                 style={[
                   styles.layerChipText,
                   isCurrent && styles.layerChipTextActive,
                   isLive && !isCurrent && styles.layerChipTextLive,
                 ]}>
                 {isLive ? `● L${i + 1}` : `L${i + 1}`}
-              </Text>
+              </AppText>
             </TouchableOpacity>
           );
         })}
       </ScrollView>
 
-      <Text style={styles.stats}>
+      <AppText style={styles.stats}>
         {layers.reduce((a, l) => a + l.paths.filter(p => p.isExtrude).length, 0)} extrude segments • {bounds.w.toFixed(0)}×{bounds.h.toFixed(0)}mm bounds
-      </Text>
+      </AppText>
     </View>
   );
 }

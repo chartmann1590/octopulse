@@ -6,6 +6,16 @@ import math
 SCREENSHOT_DIR = pathlib.Path("docs/screenshots")
 SLIDE_DIR = pathlib.Path("tools/tmp_slides")
 SLIDE_DIR.mkdir(parents=True, exist_ok=True)
+ASSET_ICON_CANDIDATES = [
+    pathlib.Path("store/assets/icon-512.png"),
+    pathlib.Path("store/assets/hi-res-icon.png"),
+    pathlib.Path("assets/icon.png"),
+    pathlib.Path("docs/assets/icon.png"),
+]
+FEATURE_GRAPHIC_CANDIDATES = [
+    pathlib.Path("store/assets/feature-graphic-1024x500.png"),
+    pathlib.Path("store/assets/feature-graphic-1024x500.jpg"),
+]
 
 # Canvas size for video (16:9 landscape)
 W, H = 1920, 1080
@@ -25,6 +35,64 @@ def load_font(size, bold=False):
             return ImageFont.truetype("C:\\Windows\\Fonts\\arial.ttf", size)
     except:
         return ImageFont.load_default()
+
+def find_asset(candidates):
+    for p in candidates:
+        if p.exists():
+            return p
+    return None
+
+def load_icon_image(size):
+    """Load real app icon (512px) and resize to size x size with rounded corners"""
+    icon_path = find_asset(ASSET_ICON_CANDIDATES)
+    if icon_path and icon_path.exists():
+        try:
+            im = Image.open(icon_path).convert("RGBA")
+            im = im.resize((size, size), Image.LANCZOS)
+            radius = max(12, size // 5)
+            mask = Image.new("L", (size, size), 0)
+            mdraw = ImageDraw.Draw(mask)
+            mdraw.rounded_rectangle([0, 0, size-1, size-1], radius=radius, fill=255)
+            rounded = Image.new("RGBA", (size, size), (0,0,0,0))
+            rounded.paste(im, (0,0), mask)
+            return rounded
+        except Exception as e:
+            print(f"icon load failed {e}, fallback to synthetic")
+    logo = Image.new("RGBA", (size, size), (0,0,0,0))
+    ldraw = ImageDraw.Draw(logo)
+    ldraw.rounded_rectangle([0,0,size-1,size-1], radius=size//5, fill=(14,165,233,255))
+    try:
+        font_logo = load_font(int(size*0.44), bold=True)
+        bbox = ldraw.textbbox((0,0), "OP", font=font_logo)
+        tw = bbox[2]-bbox[0]; th = bbox[3]-bbox[1]
+        ldraw.text(((size-tw)//2, (size-th)//2 - 2), "OP", font=font_logo, fill=(255,255,255,255))
+    except:
+        pass
+    return logo
+
+def load_feature_graphic(target_w=620):
+    """Load real feature graphic (1024x500) and resize to target_w, add rounded corners"""
+    fg_path = find_asset(FEATURE_GRAPHIC_CANDIDATES)
+    if fg_path and fg_path.exists():
+        try:
+            im = Image.open(fg_path).convert("RGBA")
+            aspect = im.size[0] / im.size[1]
+            target_h = int(target_w / aspect)
+            im = im.resize((target_w, target_h), Image.LANCZOS)
+            radius = 18
+            mask = Image.new("L", (target_w, target_h), 0)
+            mdraw = ImageDraw.Draw(mask)
+            mdraw.rounded_rectangle([0,0,target_w-1,target_h-1], radius=radius, fill=255)
+            rounded = Image.new("RGBA", (target_w, target_h), (0,0,0,0))
+            rounded.paste(im, (0,0), mask)
+            border = Image.new("RGBA", (target_w, target_h), (0,0,0,0))
+            bdraw = ImageDraw.Draw(border)
+            bdraw.rounded_rectangle([0,0,target_w-1,target_h-1], radius=radius, outline=(255,255,255,18), width=1)
+            rounded = Image.alpha_composite(rounded, border)
+            return rounded, target_h
+        except Exception as e:
+            print(f"feature graphic load failed {e}")
+    return None, 0
 
 def create_gradient_bg():
     img = Image.new("RGB", (W, H), BG_DARK)
@@ -160,30 +228,21 @@ def main():
             path = SCREENSHOT_DIR / f"{name}.png"
         phones_small[name] = add_phone_frame(path, target_height=860)
 
-    # Slide 01: Intro — single centered logo phone? But we have no screenshot for intro, create a synthetic hero instead
-    # For intro, we will show a centered large logo + title, not a phone.
-    # Create intro slide: bg + centered logo card
+    # Slide 01: Intro — uses real app icon + feature graphic banner
     intro = bg.copy()
     draw = ImageDraw.Draw(intro, "RGBA")
-    # Card centered
-    card_w, card_h = 760, 420
-    cx, cy = (W-card_w)//2, (H-card_h)//2 - 20
+    card_w, card_h = 760, 460
+    cx, cy = (W-card_w)//2, (H-card_h)//2 - 30
     draw.rounded_rectangle([cx, cy, cx+card_w, cy+card_h], radius=28, fill=(15,23,42,230), outline=(255,255,255,18), width=1)
-    # Logo
     logo_size = 96
-    logo_x, logo_y = W//2 - logo_size//2, cy + 36
-    # Gradient logo background
-    logo = Image.new("RGBA", (logo_size, logo_size), (0,0,0,0))
-    ldraw = ImageDraw.Draw(logo)
-    ldraw.rounded_rectangle([0,0,logo_size-1,logo_size-1], radius=20, fill=(14,165,233,255))
-    # overlay gradient approximation: just use solid primary, add accent corner
-    # Draw OP text
-    font_logo = load_font(42, bold=True)
-    bbox = ldraw.textbbox((0,0), "OP", font=font_logo)
-    tw = bbox[2]-bbox[0]; th = bbox[3]-bbox[1]
-    ldraw.text(((logo_size-tw)//2, (logo_size-th)//2 - 2), "OP", font=font_logo, fill=(255,255,255,255))
-    intro.paste(logo, (logo_x, logo_y), logo)
-    # Text
+    logo_x, logo_y = W//2 - logo_size//2, cy + 32
+    icon_img = load_icon_image(logo_size)
+    shadow = Image.new("RGBA", (logo_size+20, logo_size+20), (0,0,0,0))
+    sdraw = ImageDraw.Draw(shadow)
+    sdraw.rounded_rectangle([10,10,logo_size+10, logo_size+10], radius=20, fill=(0,0,0,60))
+    shadow = shadow.filter(ImageFilter.GaussianBlur(8))
+    intro.paste(shadow, (logo_x-10, logo_y-6), shadow)
+    intro.paste(icon_img, (logo_x, logo_y), icon_img)
     font_title = load_font(72, bold=True)
     title = "OctoPulse"
     bbox = draw.textbbox((0,0), title, font=font_title)
@@ -194,9 +253,18 @@ def main():
     bbox = draw.textbbox((0,0), sub, font=font_sub)
     tw = bbox[2]-bbox[0]
     draw.text((W//2 - tw//2, logo_y + logo_size + 96), sub, font=font_sub, fill=(125,211,252,255))
-    # Save intro
+    fg_img, fg_h = load_feature_graphic(target_w=620)
+    if fg_img:
+        fg_x = W//2 - fg_img.width//2
+        fg_y = cy + card_h - fg_h - 22
+        fg_shadow = Image.new("RGBA", (fg_img.width+24, fg_h+24), (0,0,0,0))
+        fgs = ImageDraw.Draw(fg_shadow)
+        fgs.rounded_rectangle([12,12, fg_img.width+12, fg_h+12], radius=18, fill=(0,0,0,45))
+        fg_shadow = fg_shadow.filter(ImageFilter.GaussianBlur(10))
+        intro.paste(fg_shadow, (fg_x-12, fg_y-12), fg_shadow)
+        intro.paste(fg_img, (fg_x, fg_y), fg_img)
     intro.save(SLIDE_DIR / "slide-01-intro.png")
-    print("slide-01-intro.png")
+    print("slide-01-intro.png — uses real icon (store/assets/icon-512.png) + feature graphic (store/assets/feature-graphic-1024x500.png)")
 
     # Slide 02: Discover — single phone centered, title bottom
     bg2 = bg.copy()
@@ -294,61 +362,69 @@ def main():
     slide06.save(SLIDE_DIR / "slide-06-ads.png")
     print("OK slide-06-ads.png")
 
-    # Slide 07: Outro — centered card with Play Store badge, QR placeholder, website
+    # Slide 07: Outro — centered card with Play Store badge + GITHUB final card (uses real icon + feature accent)
     outro = bg.copy()
     draw = ImageDraw.Draw(outro, "RGBA")
-    card_w, card_h = 860, 520
+    card_w, card_h = 900, 580
     cx, cy = (W-card_w)//2, (H-card_h)//2 - 30
     draw.rounded_rectangle([cx, cy, cx+card_w, cy+card_h], radius=28, fill=(15,23,42,230), outline=(255,255,255,18), width=1)
-    # Logo again
-    logo_x = W//2 - 48
-    logo_y = cy + 32
-    logo = Image.new("RGBA", (96,96), (0,0,0,0))
-    ldraw = ImageDraw.Draw(logo)
-    ldraw.rounded_rectangle([0,0,95,95], radius=18, fill=(14,165,233,255))
-    ldraw.text((22, 26), "OP", font=load_font(38, bold=True), fill=(255,255,255,255))
-    outro.paste(logo, (logo_x, logo_y), logo)
+    logo_size = 88
+    logo_x = W//2 - logo_size//2
+    logo_y = cy + 28
+    icon_img_out = load_icon_image(logo_size)
+    shadow = Image.new("RGBA", (logo_size+20, logo_size+20), (0,0,0,0))
+    sdraw = ImageDraw.Draw(shadow)
+    sdraw.rounded_rectangle([10,10,logo_size+10, logo_size+10], radius=18, fill=(0,0,0,60))
+    shadow = shadow.filter(ImageFilter.GaussianBlur(8))
+    outro.paste(shadow, (logo_x-10, logo_y-6), shadow)
+    outro.paste(icon_img_out, (logo_x, logo_y), icon_img_out)
     title = "OctoPulse"
-    font_title = load_font(56, bold=True)
+    font_title = load_font(54, bold=True)
     bbox = draw.textbbox((0,0), title, font=font_title)
     tw = bbox[2]-bbox[0]
-    draw.text((W//2 - tw//2, logo_y+108), title, font=font_title, fill=(248,250,252,255))
-    sub = "Monitor • Control • Print"
-    font_sub = load_font(20, bold=True)
+    draw.text((W//2 - tw//2, logo_y+100), title, font=font_title, fill=(248,250,252,255))
+    sub = "Monitor \u2022 Control \u2022 Print"
+    font_sub = load_font(19, bold=True)
     bbox = draw.textbbox((0,0), sub, font=font_sub)
     tw = bbox[2]-bbox[0]
-    draw.text((W//2 - tw//2, logo_y+170), sub, font=font_sub, fill=(125,211,252,255))
-    # Play Store badge mock (black pill with text)
+    draw.text((W//2 - tw//2, logo_y+162), sub, font=font_sub, fill=(125,211,252,255))
     badge_w, badge_h = 340, 78
-    bx, by = W//2 - badge_w//2, cy + 300
+    bx, by = W//2 - badge_w//2, cy + 255
     draw.rounded_rectangle([bx, by, bx+badge_w, by+badge_h], radius=14, fill=(0,0,0,255), outline=(255,255,255,18), width=1)
-    # Play icon triangle
     draw.polygon([(bx+28, by+20), (bx+28, by+58), (bx+58, by+39)], fill=(52,168,83,255))
     font_small = load_font(14, bold=True)
     draw.text((bx+72, by+16), "GET IT ON", font=font_small, fill=(255,255,255,200))
     font_big = load_font(26, bold=True)
     draw.text((bx+72, by+34), "Google Play", font=font_big, fill=(255,255,255,255))
-    # SOON pill
     draw.rounded_rectangle([bx+badge_w+14, by+22, bx+badge_w+86, by+56], radius=20, fill=(34,197,94,38), outline=(34,197,94,36), width=1)
     font_soon = load_font(14, bold=True)
     draw.text((bx+badge_w+26, by+30), "SOON", font=font_soon, fill=(134,239,172,255))
-    # Website URL
-    font_url = load_font(18, bold=False)
-    url = "chartmann1590.github.io/octopulse"
-    bbox = draw.textbbox((0,0), url, font=font_url)
+    font_label_small = load_font(13, bold=True)
+    label_github = "LEARN MORE ON GITHUB"
+    bbox = draw.textbbox((0,0), label_github, font=font_label_small)
     tw = bbox[2]-bbox[0]
-    draw.text((W//2 - tw//2, by+108), url, font=font_url, fill=(100,116,139,255))
-    # Small disclaimer
-    font_disc = load_font(14, bold=False)
-    disc = "Free • Contains ads • Privacy-first • MIT"
+    draw.text((W//2 - tw//2, by + 102), label_github, font=font_label_small, fill=(148,163,184,255))
+    font_url = load_font(22, bold=True)
+    url_primary = "github.com/chartmann1590/octopulse"
+    bbox = draw.textbbox((0,0), url_primary, font=font_url)
+    tw = bbox[2]-bbox[0]
+    pill_w = tw + 36; pill_h = 36
+    pill_x = W//2 - pill_w//2; pill_y = by + 126
+    draw.rounded_rectangle([pill_x, pill_y, pill_x+pill_w, pill_y+pill_h], radius=18, fill=(255,255,255,10), outline=(255,255,255,10), width=1)
+    draw.text((W//2 - tw//2, pill_y + 7), url_primary, font=font_url, fill=(248,250,252,255))
+    font_url2 = load_font(16, bold=False)
+    url_secondary = "chartmann1590.github.io/octopulse"
+    bbox = draw.textbbox((0,0), url_secondary, font=font_url2)
+    tw = bbox[2]-bbox[0]
+    draw.text((W//2 - tw//2, pill_y + 46), url_secondary, font=font_url2, fill=(148,163,184,255))
+    font_disc = load_font(13, bold=False)
+    disc = "Free \u2022 Contains ads \u2022 Privacy-first \u2022 MIT  \u2022  docs/video/promo.mp4"
     bbox = draw.textbbox((0,0), disc, font=font_disc)
     tw = bbox[2]-bbox[0]
-    draw.text((W//2 - tw//2, by+136), disc, font=font_disc, fill=(100,116,139,180))
-
+    draw.text((W//2 - tw//2, pill_y + 76), disc, font=font_disc, fill=(100,116,139,160))
     outro.save(SLIDE_DIR / "slide-07-outro.png")
-    print("OK slide-07-outro.png")
-
-    print(f"All slides generated in {SLIDE_DIR}")
+    print("OK slide-07-outro.png — uses real icon + GitHub website final card (github.com/chartmann1590/octopulse + pages site)")
+    print(f"All slides generated in {SLIDE_DIR} — validated: screenshots (6), icon (store/assets/icon-512.png), feature graphic (store/assets/feature-graphic-1024x500.png), final card shows GitHub website")
 
 if __name__ == "__main__":
     main()

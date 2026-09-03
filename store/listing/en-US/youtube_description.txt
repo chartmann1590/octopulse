@@ -1,0 +1,39 @@
+Your OctoPrint in your pocket. Meet OctoPulse — the free, privacy-first OctoPrint companion for Android.
+
+OctoPulse lets you find your printer on Wi-Fi in seconds, pair with one tap, and monitor every print from your phone — live camera, progress, temps, and full control. No account, no cloud.
+
+✨ WHAT YOU’LL SEE (31s):
+00:00 — Meet OctoPulse
+00:02 — Auto-discover printers on Wi-Fi
+00:07 — Pair with one tap (Approve in OctoPrint)
+00:12 — Monitor every print — camera, progress & temps
+00:17 — Full control — jog, temps, fan & G-code 2D/3D preview
+00:23 — Free with respectful ads (never during a print)
+00:26 — OctoPulse • Monitor • Control • Print — Coming soon to Google Play
+
+🔗 LINKS:
+Website: https://chartmann1590.github.io/octopulse/
+GitHub (open source MIT): https://github.com/chartmann1590/octopulse
+Privacy Policy: https://chartmann1590.github.io/octopulse/privacy.html
+Google Play: https://play.google.com/store/apps/details?id=com.charles.octopulse (coming soon — automated publishing via GitHub Actions)
+Releases / APK: https://github.com/chartmann1590/octopulse/releases
+Sponsor: https://buymeacoffee.com/charleshartmann
+Support: https://github.com/chartmann1590/octopulse/issues • hello@octopulse.app
+
+📱 FEATURES:
+🔍 Auto-discovery — mDNS/Bonjour + SSDP + smart subnet scan, strict OctoPrint verification
+⚡ 1-tap pairing — official Application Keys flow, just tap ALLOW in OctoPrint
+📊 Dashboard — multi-printer status cards, progress % & temps
+📷 Live camera — MJPEG/snapshot with flip/rotate & auto-reconnect
+🎛️ Full control — jog XYZ, home, extrude/retract, fan, temps, emergency stop, terminal
+📐 G-code preview — 2D/3D layer viewer with pinch-zoom & orbit
+📄 Files — browse, preview, start print, delete
+🔔 Smart alerts — finished / error / 25/50/75/90% milestones
+
+🔒 PRIVACY FIRST: No account. Print data, API keys and camera feeds never leave your device (encrypted on device). See Privacy Policy.
+
+📄 Store assets used in this promo: screenshots (phone 1080×2340), hi-res icon (512×512) and feature graphic (1024×500) from store/assets — burn-in captions + human TTS (en-US-AndrewNeural) with VTT/SRT.
+
+© 2026 OctoPulse — Free • Contains ads • MIT • Not affiliated with OctoPrint.
+
+#OctoPrint #OctoPulse #3DPrinting #3DPrinter #OctoPi #Ender3 #Prusa #BambuLab #Makers #AndroidApp

@@ -1,4 +1,5 @@
 import React from 'react';
+import { AppText } from './AppText';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { theme } from '../theme';
 import { PrinterConnection, PrinterStatus } from '../types';
@@ -17,7 +18,7 @@ function ProgressRing({ progress, size=56, stroke=6 }: { progress: number; size?
         <Circle cx={size/2} cy={size/2} r={r} stroke={color} strokeWidth={stroke} fill="none" strokeDasharray={`${c} ${c}`} strokeDashoffset={offset} strokeLinecap="round" rotation={-90} origin={`${size/2}, ${size/2}`} />
       </Svg>
       <View style={[StyleSheet.absoluteFill, { alignItems:'center', justifyContent:'center'}]}>
-        <Text style={{ color: theme.colors.text, fontWeight:'800', fontSize:12 }}>{Math.round(progress)}%</Text>
+        <AppText style={{ color: theme.colors.text, fontWeight:'800', fontSize:12 }}>{Math.round(progress)}%</AppText>
       </View>
     </View>
   );
@@ -35,37 +36,37 @@ export function PrinterCard({ printer, status, onPress, onLongPress }: { printer
     <TouchableOpacity onPress={onPress} onLongPress={onLongPress} activeOpacity={0.85} style={styles.card}>
       <View style={styles.header}>
         <View style={{ flex:1 }}>
-          <Text style={styles.name} numberOfLines={1}>{printer.name}</Text>
-          <Text style={styles.host} numberOfLines={1}>{printer.host}:{printer.port} • {state}</Text>
+          <AppText style={styles.name} numberOfLines={1}>{printer.name}</AppText>
+          <AppText style={styles.host} numberOfLines={1}>{printer.host}:{printer.port} • {state}</AppText>
         </View>
         <View style={[styles.dot, { backgroundColor: stateColor }]} />
       </View>
       <View style={styles.body}>
         <View style={{ flex:1, paddingRight: 12 }}>
-          <Text style={styles.file} numberOfLines={2}>{fileName}</Text>
+          <AppText style={styles.file} numberOfLines={2}>{fileName}</AppText>
           <View style={styles.temps}>
             <View style={styles.tempBox}>
-              <Text style={styles.tempLabel}>NOZZLE</Text>
-              <Text style={styles.tempValue}>{tool ? `${Math.round(tool.actual)}° / ${Math.round(tool.target)}°` : '--'}</Text>
+              <AppText style={styles.tempLabel}>NOZZLE</AppText>
+              <AppText style={styles.tempValue}>{tool ? `${Math.round(tool.actual)}° / ${Math.round(tool.target)}°` : '--'}</AppText>
             </View>
             <View style={styles.tempBox}>
-              <Text style={styles.tempLabel}>BED</Text>
-              <Text style={styles.tempValue}>{bed ? `${Math.round(bed.actual)}° / ${Math.round(bed.target)}°` : '--'}</Text>
+              <AppText style={styles.tempLabel}>BED</AppText>
+              <AppText style={styles.tempValue}>{bed ? `${Math.round(bed.actual)}° / ${Math.round(bed.target)}°` : '--'}</AppText>
             </View>
           </View>
           {isPrinting && status?.job.progress.printTimeLeft ? (
-            <Text style={styles.timeLeft}>
+            <AppText style={styles.timeLeft}>
               {formatDuration(status.job.progress.printTimeLeft)} left • {formatDuration(status.job.progress.printTime)} elapsed
-            </Text>
+            </AppText>
           ) : null}
         </View>
         <ProgressRing progress={completion} />
       </View>
       <View style={styles.footer}>
         <View style={styles.badge}>
-          <Text style={styles.badgeText}>{isPrinting ? 'PRINTING' : status?.stateFlags?.paused ? 'PAUSED' : status?.stateFlags?.operational ? 'IDLE' : 'OFFLINE'}</Text>
+          <AppText style={styles.badgeText}>{isPrinting ? 'PRINTING' : status?.stateFlags?.paused ? 'PAUSED' : status?.stateFlags?.operational ? 'IDLE' : 'OFFLINE'}</AppText>
         </View>
-        <Text style={styles.tapHint}>Tap to manage →</Text>
+        <AppText style={styles.tapHint}>Tap to manage →</AppText>
       </View>
     </TouchableOpacity>
   );

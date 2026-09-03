@@ -80,16 +80,10 @@ jobs:
             npx expo prebuild --clean --no-install
           fi
 
-      - name: Patch Kotlin version for play-services-ads 25.4.0
+      - name: Verify dependencies (no patch needed for 15.12.0)
         run: |
-          echo "Patching Kotlin 2.1.20 -> 2.3.10 for react-native gradle plugin"
-          if [ -f node_modules/@react-native/gradle-plugin/gradle/libs.versions.toml ]; then
-            sed -i 's/kotlin = "2\.1\.20"/kotlin = "2.3.10"/' node_modules/@react-native/gradle-plugin/gradle/libs.versions.toml
-            echo "Patched react-native gradle plugin Kotlin to 2.3.10"
-            grep -m1 'kotlin = ' node_modules/@react-native/gradle-plugin/gradle/libs.versions.toml || true
-          fi
-          find node_modules/.pnpm -path "*@react-native+gradle-plugin*/gradle/libs.versions.toml" -exec sed -i 's/kotlin = "2\.1\.20"/kotlin = "2.3.10"/' {} \; 2>/dev/null || true
-          echo "✓ Kotlin patch applied"
+          echo "Using react-native-google-mobile-ads 15.12.0 with Kotlin 2.1.20 — no patch"
+          grep -A2 '"googleMobileAds"' node_modules/react-native-google-mobile-ads/package.json | head -n 5 || true
 
       - name: Verify AndroidManifest contains AdMob App ID
         run: |

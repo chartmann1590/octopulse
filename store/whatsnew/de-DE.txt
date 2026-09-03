@@ -1,0 +1,8 @@
+﻿Erstes Play Store-Release von OctoPulse!
+
+• Automatische Übersetzung auf dem Gerät mit Google ML Kit in 20 Sprachen
+• Überwachen und steuern Sie jeden OctoPrint-Drucker von Ihrem Smartphone
+• Automatische Erkennung im WLAN und 1-Klick-Kopplung
+• Live-Kamerastream mit Drehen & Schnappschuss
+• Vollständige Maschinensteuerung: XYZ-Verfahren, Temperaturen, Lüfter, Terminal
+• 2D/3D G-Code-Visualisierung und Druckbenachrichtigungen

@@ -16,9 +16,9 @@ on:
       track:
         description: "Play Console track to publish to"
         required: true
-        default: "internal"
+        default: "production"
         type: choice
-        options: [internal, closed, production]
+        options: [production, internal, closed]
       status:
         description: "Release status"
         required: true
@@ -91,11 +91,7 @@ jobs:
 
       - name: Install deps
         run: |
-          if [ -f pnpm-lock.yaml ]; then
-            pnpm install --frozen-lockfile || pnpm install --no-frozen-lockfile
-          else
-            npm ci || npm install
-          fi
+          pnpm install --no-frozen-lockfile || npm install
 
       - name: Restore google-services.json from secret (if provided)
         env:
@@ -135,13 +131,13 @@ jobs:
             echo "ANDROID_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> $GITHUB_ENV
             echo "ANDROID_KEY_ALIAS=$KEY_ALIAS" >> $GITHUB_ENV
             echo "ANDROID_KEY_PASSWORD=$KEY_PASSWORD" >> $GITHUB_ENV
-            # Also legacy names expected by some scripts
-            echo "MYAPP_UPLOAD_STORE_FILE=android/app/upload.keystore" >> $GITHUB_ENV
-            echo "MYAPP_UPLOAD_STORE_PASSWORD=$KEYSTORE_PASSWORD" >> $GITHUB_ENV
-            echo "MYAPP_UPLOAD_KEY_ALIAS=$KEY_ALIAS" >> $GITHUB_ENV
-            echo "MYAPP_UPLOAD_KEY_PASSWORD=$KEY_PASSWORD" >> $GITHUB_ENV
           else
-            echo "::notice::ANDROID_KEYSTORE_BASE64 not set — will use debug keystore for signing (Play App Signing will re-sign). For production, follow store/PLAY_SIGNING.md"
+            echo "::notice::ANDROID_KEYSTORE_BASE64 not set — generating release keystore for bundle signing..."
+            keytool -genkeypair -v -storetype PKCS12 -keystore android/app/release.keystore -alias octopulse-key -keyalg RSA -keysize 2048 -validity 10000 -storepass octopulse123 -keypass octopulse123 -dname "CN=OctoPulse, OU=Apps, O=Charles, L=US, S=US, C=US"
+            echo "ANDROID_KEYSTORE_FILE=android/app/release.keystore" >> $GITHUB_ENV
+            echo "ANDROID_KEYSTORE_PASSWORD=octopulse123" >> $GITHUB_ENV
+            echo "ANDROID_KEY_ALIAS=octopulse-key" >> $GITHUB_ENV
+            echo "ANDROID_KEY_PASSWORD=octopulse123" >> $GITHUB_ENV
           fi
 
       - name: Expo config check (verify AdMob & versionCode injected)
@@ -156,20 +152,13 @@ jobs:
           fi
           echo "✓ Config check passed — VERSION_CODE=$VERSION_CODE injected via env"
 
-      - name: Prebuild (generates android/ with correct package, AdMob ID, versionCode)
+      - name: Prebuild (verify and preserve android native files)
         run: |
           if [ -f android/app/src/main/java/com/charles/octopulse/MLKitTranslateModule.kt ]; then
-            echo "Custom MLKit native files detected — prebuild without --clean to preserve them"
-            npx expo prebuild --no-install
+            echo "Custom MLKit native files detected — preserving existing native configuration"
           else
             npx expo prebuild --clean --no-install
           fi
-
-      - name: Verify dependencies (no patch needed for 15.12.0 + Kotlin 2.1.20)
-        run: |
-          echo "Using react-native-google-mobile-ads 15.12.0 with Kotlin 2.1.20 — no patch needed"
-          grep -A2 '"googleMobileAds"' node_modules/react-native-google-mobile-ads/package.json | head -n 5 || true
-          grep -m1 'kotlin = ' node_modules/@react-native/gradle-plugin/gradle/libs.versions.toml || true
 
       - name: Verify AndroidManifest contains AdMob App ID and correct package
         run: |
@@ -210,18 +199,15 @@ jobs:
           # Mask email in logs
           cat /tmp/play-service-account.json | grep client_email || true
 
-      - name: Upload to Play Console (internal track by default)
+      - name: Upload to Play Console (production draft)
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: com.charles.octopulse
           releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
-          track: ${{ inputs.track || 'internal' }}
+          track: ${{ inputs.track || 'production' }}
           status: ${{ inputs.status || 'draft' }}
-          # what’s new — from store listing
-          whatsNewDirectory: store/listing/en-US
-          # Optional: mapping file for deobfuscation (if proguard enabled)
-          # mappingFile: android/app/build/outputs/mapping/release/mapping.txt
+          whatsNewDirectory: store/whatsnew
 
       - name: Summary
         if: always()
@@ -233,8 +219,9 @@ jobs:
           echo "- Package: com.charles.octopulse" >> $GITHUB_STEP_SUMMARY
           echo "- Version: $VERSION_NAME ($VERSION_CODE)" >> $GITHUB_STEP_SUMMARY
           echo "- AAB: android/app/build/outputs/bundle/release/app-release.aab" >> $GITHUB_STEP_SUMMARY
-          echo "- Track: ${{ inputs.track || 'internal' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Track: ${{ inputs.track || 'production' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Status: ${{ inputs.status || 'draft' }}" >> $GITHUB_STEP_SUMMARY
           echo "- AdMob App ID present: $(if [ -n \"$ADMOB_ANDROID_APP_ID\" ]; then echo yes; else echo no; fi)" >> $GITHUB_STEP_SUMMARY
           if [ -z "$HAS_PLAY_JSON" ]; then echo "- ⚠️ PLAY_SERVICE_ACCOUNT_JSON not set — publish skipped. See store/SERVICE_ACCOUNT.md" >> $GITHUB_STEP_SUMMARY; else echo "- ✅ Published via service account" >> $GITHUB_STEP_SUMMARY; fi
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Next: In Play Console verify Internal testing → promote to production after review." >> $GITHUB_STEP_SUMMARY
+          echo "Next: In Play Console verify Production draft → Review and roll out release." >> $GITHUB_STEP_SUMMARY

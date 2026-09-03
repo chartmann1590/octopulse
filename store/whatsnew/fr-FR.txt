@@ -1,0 +1,8 @@
+﻿Première version Play Store d'OctoPulse !
+
+• Traduction automatique sur l'appareil avec Google ML Kit en 20 langues
+• Surveillez et contrôlez n'importe quelle imprimante OctoPrint depuis votre téléphone
+• Découverte automatique sur Wi-Fi et appairage en 1 clic
+• Flux de caméra en direct avec rotation et instantané
+• Contrôle complet de la machine : jog XYZ, températures, ventilateur, console terminal
+• Visualiseur G-code 2D/3D et notifications d'impression

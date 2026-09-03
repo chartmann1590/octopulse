@@ -1,0 +1,9 @@
+﻿Initial Play Store release of OctoPulse!
+
+• On-device Google ML Kit auto-translation into 20 languages
+• Monitor & control any OctoPrint printer from your phone
+• Auto-discovery on Wi-Fi + 1-tap pairing
+• Live camera stream with flip/rotate & snapshot
+• Full machine control: jog XYZ, temps, fan, terminal console
+• 2D/3D G-code visualizer & print notifications
+• Free with respectful ads that never interrupt a print

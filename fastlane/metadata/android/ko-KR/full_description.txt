@@ -1,0 +1,49 @@
+주머니 속 OctoPrint. Android 스마트폰에서 모니터링, 제어 및 출력 — 계정 불필요.
+
+OctoPulse는 OctoPrint를 위한 무료, 개인정보 보호 중심의 컴패니언입니다. Wi-Fi 어디서나 진행률을 확인하고, 카메라를 보고, 출력을 관리하세요. OctoPi, Ender 3, Prusa, Bambu(OctoPrint 사용) 및 OctoPrint가 실행되는 모든 프린터에서 작동합니다.
+
+왜 OCTOPULSE인가?
+• 무료 및 오픈소스 — 구독 없음, 클라우드 없음. 데이터는 스마트폰과 프린터 사이에 머무릅니다.
+• 메이커를 위해 — 빠르고 현대적이며 실제 프린트 팜과 취미 사용자를 위해 제작.
+• 존중하는 광고 — 작은 배너 + 설정 후 가끔 전면 광고. 출력 중에는 표시되지 않습니다.
+
+주요 기능
+🔍 자동 검색 — mDNS/Bonjour, SSDP 및 스마트 서브넷 스캔으로 Wi-Fi에서 OctoPrint를 몇 초 만에 찾습니다. IP 입력 불필요. 엄격한 검증으로 실제 프린터만 표시.
+⚡ 원탭 페어링 — 공식 Application Keys로 연결. 프린터를 탭 → OctoPrint에서 승인 → 완료. API 키 복사 불필요.
+📊 한눈에 보는 대시보드 — 모든 프린터를 한곳에서: 상태, 진행률 %, 남은 시간, 노즐 및 베드 온도. 당겨서 새로고침.
+📷 라이브 카메라 — 뒤집기, 회전, 자동 재연결을 지원하는 MJPEG/스냅샷 스트리밍. 소파나 작업장에서 첫 레이어를 지켜보세요.
+🎛️ 전체 제어 — X/Y/Z 이동, 홈, 압출/리트랙트, 노즐/베드 온도, 팬, 비상 정지 및 터미널로 G-code 전송.
+📐 G-CODE 미리보기 — 핀치 줌 및 궤도 지원 2D 및 3D 레이어 뷰어. 출력 전 레이어를 확인하세요.
+📄 파일 관리자 — OctoPrint 파일을 탐색하고, 미리보고, 출력을 시작하거나 삭제하세요.
+🔔 스마트 알림 — 출력 완료, 실패 또는 25/50/75/90%에서 알림. 프린터별 전환 및 백그라운드 폴링. 방해 금지 모드 준수.
+🌙 세련되고 프라이빗 — 다크 테마, 햅틱, 오프라인 처리. 호스트, API 키 및 카메라 URL은 기기에서 암호화되어 네트워크를 떠나지 않습니다.
+
+사용 방법
+1) OctoPulse를 설치하고 OctoPrint와 동일한 Wi-Fi에 연결하세요.
+2) “Wi-Fi에서 프린터 찾기”를 탭하고, 선택한 다음 OctoPrint에서 페어링 및 승인하세요.
+3) 진행률을 모니터링하고, 카메라를 보고, 필요시 일시정지/중지하고 다음 출력을 시작하세요.
+
+호환성
+OctoPrint가 실행되는 모든 프린터에서 작동 — Raspberry Pi의 OctoPi 포함. 브라우저에서 OctoPrint를 열 수 있으면 OctoPulse가 연결할 수 있습니다. 원격 액세스는 VPN/리버스 프록시 URL을 사용하세요.
+
+개인정보 우선
+• 계정 없음, 가입 없음.
+• 출력 파일, G-code 및 카메라 피드는 당사 서버로 전송되지 않습니다.
+• API 키는 Android Keystore로 암호화되어 저장됩니다.
+• 정확한 위치 없음 — 검색은 로컬 서브넷만 스캔합니다.
+전체 개인정보 처리방침: https://chartmann1590.github.io/octopulse/privacy.html
+
+광고 및 가격
+OctoPulse는 Google AdMob을 통한 광고로 무료로 제공됩니다. 작은 고정 배너와 설정 후 가끔 전면 광고 — 출력 중에는 표시되지 않습니다. 광고 ID는 Android 설정 → 개인정보 보호 → 광고에서 재설정/삭제할 수 있습니다. 자세한 내용은 개인정보 처리방침 §4 참조.
+
+권한 설명
+INTERNET, ACCESS_NETWORK_STATE, ACCESS_WIFI_STATE, CHANGE_WIFI_MULTICAST_STATE(mDNS용), POST_NOTIFICATIONS, RECEIVE_BOOT_COMPLETED, VIBRATE, AD_ID. 위치, 카메라 또는 연락처 없음.
+
+오픈 소스 및 지원
+OctoPulse는 MIT 라이선스 오픈소스입니다(github.com/chartmann1590/octopulse). 스타를 누르고, 이슈를 보고하거나 후원하세요: buymeacoffee.com/charleshartmann
+
+지원
+문제나 아이디어가 있나요? GitHub에 이슈를 열거나 hello@octopulse.app로 이메일을 보내세요
+
+—
+OctoPrint와 제휴하지 않음. OctoPrint는 소유자의 등록 상표입니다. Ender, Prusa, Bambu는 각 소유자의 상표입니다.

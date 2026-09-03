@@ -1,0 +1,1 @@
+Steruj drukarką 3D OctoPrint z telefonu. Monitoruj i drukuj przez Wi-Fi.

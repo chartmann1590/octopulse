@@ -1,0 +1,1 @@
+Bedien je OctoPrint 3D-printer vanaf je telefoon. Monitor en print via Wi-Fi.

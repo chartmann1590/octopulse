@@ -1,0 +1,9 @@
+Erstes Play Store Release von OctoPulse!
+
+• OctoPrint-Drucker vom Handy überwachen & steuern
+• Auto-Erkennung im WLAN + 1-Tipp-Kopplung
+• Live-Kamera, volle Kontrolle, G-Code Vorschau
+• Dateien & smarte Druck-Benachrichtigungen
+• Kostenlos mit respektvoller Werbung
+
+Danke fürs Testen — bitte hinterlasse eine Bewertung!

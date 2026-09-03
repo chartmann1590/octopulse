@@ -1,0 +1,49 @@
+Twój OctoPrint w kieszeni. Monitoruj, steruj i drukuj z telefonu z Androidem — bez konta.
+
+OctoPulse to darmowy, prywatny towarzysz dla OctoPrint. Sprawdzaj postęp, oglądaj kamerę i zarządzaj wydrukami wszędzie w sieci Wi-Fi. Działa z OctoPi, Ender 3, Prusa, Bambu (z OctoPrint) i każdą drukarką z OctoPrint.
+
+DLACZEGO OCTOPULSE?
+• Darmowy i open source — bez subskrypcji, bez chmury. Dane zostają między telefonem a drukarką.
+• Stworzony dla makerów — szybki, nowoczesny, zbudowany dla farm drukarek i hobbystów.
+• Szanujące reklamy — mały baner + okazjonalny interstitial po konfiguracji. Nigdy podczas drukowania.
+
+KLUCZOWE FUNKCJE
+🔍 AUTO-WYKRYWANIE — Znajduje OctoPrint w Wi-Fi w sekundy przez mDNS/Bonjour, SSDP i inteligentne skanowanie podsieci. Bez wpisywania IP. Surowa weryfikacja OctoPrint, tylko prawdziwe drukarki się pojawiają.
+⚡ PAROWANIE JEDNYM DOTKNIĘCIEM — Łączy przez oficjalne Application Keys. Dotknij drukarkę → Zatwierdź w OctoPrint → gotowe. Bez kopiowania kluczy API.
+📊 PULPIT NA JEDEN RZUT OKA — Wszystkie drukarki w jednym miejscu: status, %, czas pozostały, temperatury dyszy i stołu. Przeciągnij aby odświeżyć.
+📷 KAMERA NA ŻYWO — Streaming MJPEG/snapshot z obracaniem, flip i auto-reconnect. Pilnuj pierwszych warstw z kanapy lub warsztatu.
+🎛️ PEŁNA KONTROLA — Przesuw X/Y/Z, home, ekstruzja/retrakcja, temperatury dyszy/stołu, wentylator, awaryjne zatrzymanie i wysyłanie G-code przez terminal.
+📐 PODGLĄD G-CODE — Przeglądarka warstw 2D i 3D z pinch-zoom i orbitą. Sprawdź warstwy przed drukiem.
+📄 MENEDŻER PLIKÓW — Przeglądaj pliki OctoPrint, podgląd, rozpocznij wydruk lub usuń.
+🔔 INTELIGENTNE ALERTY — Powiadomienie gdy wydruk skończony, nieudany lub 25/50/75/90 %. Przełączane per drukarka i polling w tle. Szanuje Nie przeszkadzać.
+🌙 DOPRACOWANY I PRYWATNY — Ciemny motyw, haptyka, obsługa offline. Hosty, klucze API i URL-e kamery zaszyfrowane na urządzeniu, nigdy nie opuszczają twojej sieci.
+
+JAK TO DZIAŁA
+1) Zainstaluj OctoPulse i dołącz do tego samego Wi-Fi co OctoPrint.
+2) Dotknij „Odkryj drukarki”, wybierz swoją, dotknij Paruj i Zatwierdź w OctoPrint.
+3) Monitoruj postęp, oglądaj kamerę, pauzuj/zatrzymaj w razie potrzeby i rozpocznij kolejny wydruk.
+
+KOMPATYBILNOŚĆ
+Działa z każdą drukarką z OctoPrint — w tym OctoPi na Raspberry Pi. Jeśli możesz otworzyć OctoPrint w przeglądarce, OctoPulse może się połączyć. Do zdalnego dostępu użyj swojego URL VPN/reverse proxy.
+
+PRYWATNOŚĆ NAJWAŻNIEJSZA
+• Brak konta, brak rejestracji.
+• Pliki wydruku, G-code i strumienie kamery nigdy nie trafiają na nasze serwery.
+• Klucze API zaszyfrowane Android Keystore.
+• Brak dokładnej lokalizacji — wykrywanie skanuje tylko twoją lokalną podsieć.
+Pełna polityka prywatności: https://chartmann1590.github.io/octopulse/privacy.html
+
+REKLAMY I CENY
+OctoPulse jest darmowy i z reklamami via Google AdMob. Mały zakotwiczony baner i czasem pełny ekran po konfiguracji — nigdy podczas drukowania. Możesz zresetować/usunąć Advertising ID w Ustawienia Android → Prywatność → Reklamy. Zobacz Politykę §4.
+
+UPRAWNIENIA WYJAŚNIONE
+INTERNET, ACCESS_NETWORK_STATE, ACCESS_WIFI_STATE, CHANGE_WIFI_MULTICAST_STATE (dla mDNS), POST_NOTIFICATIONS, RECEIVE_BOOT_COMPLETED, VIBRATE, AD_ID. Bez lokalizacji, kamery czy kontaktów.
+
+OPEN SOURCE I WSPARCIE
+OctoPulse jest open source (MIT) na github.com/chartmann1590/octopulse. Daj gwiazdkę, zgłoś problemy lub sponsoruj: buymeacoffee.com/charleshartmann
+
+WSPARCIE
+Problemy lub pomysły? Otwórz issue na GitHub lub napisz na hello@octopulse.app
+
+—
+Niepowiązany z OctoPrint. OctoPrint jest znakiem towarowym właścicieli. Ender, Prusa i Bambu są znakami towarowymi odpowiednich właścicieli.

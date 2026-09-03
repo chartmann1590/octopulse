@@ -1,0 +1,1 @@
+Controlla OctoPrint 3D dal telefono. Monitora e stampa in Wi-Fi.

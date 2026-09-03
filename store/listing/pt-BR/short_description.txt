@@ -1,0 +1,1 @@
+Controle sua impressora 3D OctoPrint pelo celular. Monitore e imprima no Wi-Fi.

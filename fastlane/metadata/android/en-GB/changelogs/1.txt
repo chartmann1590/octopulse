@@ -1,0 +1,10 @@
+Initial Play Store release of OctoPulse!
+
+• Monitor & control any OctoPrint printer from your phone
+• Auto-discovery on Wi-Fi + 1-tap pairing
+• Live camera with flip/rotate & auto-reconnect
+• Full control: jog, home, temps, fan, terminal & emergency stop
+• G-code 2D/3D preview, files & smart print notifications
+• Free with respectful ads that never interrupt a print
+
+Thanks for trying OctoPulse — please leave a review! Feedback: github.com/chartmann1590/octopulse

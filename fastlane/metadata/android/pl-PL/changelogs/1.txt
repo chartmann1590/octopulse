@@ -1,0 +1,9 @@
+Pierwsze wydanie OctoPulse w Play Store!
+
+• Monitoruj i steruj drukarką OctoPrint z telefonu
+• Auto-wykrywanie Wi-Fi + parowanie jednym dotknięciem
+• Kamera na żywo, pełna kontrola, podgląd G-code
+• Pliki i inteligentne alerty
+• Darmowy z szanującymi reklamami
+
+Dzięki za wypróbowanie OctoPulse — zostaw recenzję!

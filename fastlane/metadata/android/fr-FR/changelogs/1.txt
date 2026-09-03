@@ -1,0 +1,9 @@
+Première version Play Store d'OctoPulse !
+
+• Surveillez et contrôlez votre imprimante OctoPrint depuis votre téléphone
+• Découverte auto Wi-Fi + appairage en 1 tap
+• Caméra en direct, contrôle total, aperçu G-code
+• Fichiers et alertes intelligentes
+• Gratuit avec pubs respectueuses
+
+Merci d'essayer OctoPulse — laissez un avis !

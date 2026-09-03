@@ -1,0 +1,49 @@
+ポケットの中のOctoPrint。Androidスマホから監視・制御・印刷 — アカウント不要。
+
+OctoPulseはOctoPrint用の無料でプライバシー重視のコンパニオンです。Wi-Fi上のどこからでも進捗確認、カメラ視聴、印刷管理ができます。OctoPi、Ender 3、Prusa、Bambu（OctoPrint使用）やOctoPrintが動くあらゆるプリンターで動作します。
+
+なぜOCTOPULSEか？
+• 無料＆オープンソース — サブスクなし、クラウドなし。データはスマホとプリンターの間に留まります。
+• メーカーのために — 高速、モダン、実際のプリントファームやホビー向けに設計。
+• 控えめな広告 — 小さなバナー＋セットアップ後に時々全画面広告。印刷中は表示されません。
+
+主な機能
+🔍 自動検出 — mDNS/Bonjour、SSDP、スマートサブネットスキャンで数秒でWi-Fi上のOctoPrintを発見。IP入力不要。厳格な検証で本物のプリンターのみ表示。
+⚡ ワンタップペアリング — 公式Application Keysで接続。プリンターをタップ → OctoPrintで承認 → 完了。APIキーのコピー不要。
+📊 一目でわかるダッシュボード — すべてのプリンターを一箇所で：ステータス、進捗％、残り時間、ノズル＆ベッド温度。引っ張って更新。
+📷 ライブカメラ — 反転・回転・自動再接続対応のMJPEG/スナップショット配信。ソファや作業場からファーストレイヤーを監視。
+🎛️ フルコントロール — X/Y/Z移動、ホーム、押し出し/引き戻し、ノズル/ベッド温度、ファン、緊急停止、ターミナルからG-code送信。
+📐 G-CODEプレビュー — ピンチズームとオービット対応の2D＆3Dレイヤービューワー。印刷前にレイヤーを確認。
+📄 ファイルマネージャー — OctoPrintファイルを閲覧、プレビュー、印刷開始や削除。
+🔔 スマートアラート — 印刷完了、失敗、25/50/75/90％で通知。プリンターごとに切替、バックグラウンドポーリング。おやすみモード尊重。
+🌙 洗練＆プライベート — ダークテーマ、触覚、オフライン対応。ホスト、APIキー、カメラURLはデバイス上で暗号化、ネットワークから出ません。
+
+使い方
+1) OctoPulseをインストールし、OctoPrintと同じWi-Fiに参加。
+2) 「Wi-Fiでプリンターを探す」をタップ、選択、ペアリングしてOctoPrintで承認。
+3) 進捗を監視、カメラを見て、必要なら一時停止/停止し、次の印刷を開始。
+
+互換性
+OctoPrintが動くあらゆるプリンターで動作 — Raspberry Pi上のOctoPiを含む。ブラウザでOctoPrintを開けるなら、OctoPulseは接続できます。リモートアクセスはVPN/リバースプロキシURLを使用。
+
+プライバシー最優先
+• アカウント不要、サインアップなし。
+• 印刷ファイル、G-code、カメラ映像は当社サーバーに送信されません。
+• APIキーはAndroid Keystoreで暗号化保存。
+• 正確な位置情報なし — 検出はローカルサブネットのみスキャン。
+完全なプライバシーポリシー: https://chartmann1590.github.io/octopulse/privacy.html
+
+広告と価格
+OctoPulseは無料でGoogle AdMobによる広告で運営。小さな固定バナーと時々全画面広告（セットアップ後）— 印刷中はなし。広告IDはAndroid設定 → プライバシー → 広告でリセット/削除できます。詳細はプライバシーポリシー§4。
+
+権限の説明
+INTERNET、ACCESS_NETWORK_STATE、ACCESS_WIFI_STATE、CHANGE_WIFI_MULTICAST_STATE（mDNS用）、POST_NOTIFICATIONS、RECEIVE_BOOT_COMPLETED、VIBRATE、AD_ID。位置情報、カメラ、連絡先は不要。
+
+オープンソース＆サポート
+OctoPulseはMITライセンスのオープンソース（github.com/chartmann1590/octopulse）。スターを付け、Issueを報告、または支援: buymeacoffee.com/charleshartmann
+
+サポート
+問題やアイデア？GitHubでIssueを作成するか hello@octopulse.app にメールしてください
+
+—
+OctoPrintとは無関係。OctoPrintは所有者の登録商標です。Ender、Prusa、Bambuはそれぞれの商標です。

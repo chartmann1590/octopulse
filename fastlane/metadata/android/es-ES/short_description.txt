@@ -1,0 +1,1 @@
+Controla tu impresora OctoPrint 3D desde el móvil. Supervisa e imprime por WiFi.

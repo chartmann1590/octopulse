@@ -1,0 +1,9 @@
+Eerste Play Store-release van OctoPulse!
+
+• Monitor en bedien je OctoPrint-printer vanaf je telefoon
+• Auto-detectie Wi-Fi + koppeling met 1 tik
+• Live camera, volledige bediening, G-code preview
+• Bestanden en slimme meldingen
+• Gratis met respectvolle advertenties
+
+Bedankt voor het proberen van OctoPulse — laat een review achter!

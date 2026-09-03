@@ -1,0 +1,49 @@
+Je OctoPrint in je broekzak. Monitor, bedien en print vanaf je Android-telefoon — geen account nodig.
+
+OctoPulse is de gratis, privacyvriendelijke metgezel voor OctoPrint. Controleer voortgang, bekijk de camera en beheer prints overal op je Wi-Fi. Werkt met OctoPi, Ender 3, Prusa, Bambu (met OctoPrint) en elke printer met OctoPrint.
+
+WAAROM OCTOPULSE?
+• Gratis & open source — geen abonnement, geen cloud. Gegevens blijven tussen je telefoon en je printer.
+• Gemaakt voor makers — snel, modern en gebouwd voor echte printfarms en hobbyisten.
+• Respectvolle advertenties — kleine banner + occasionele interstitial na setup. Nooit tijdens het printen.
+
+BELANGRIJKSTE FUNCTIES
+🔍 AUTO-DETECTIE — Vindt OctoPrint in seconden op je Wi-Fi via mDNS/Bonjour, SSDP en slimme subnet-scan. Geen IP-adressen typen. Strikte OctoPrint-verificatie, alleen echte printers verschijnen.
+⚡ 1-TIK KOPPELING — Verbindt via officiële Application Keys. Tik je printer → Goedkeuren in OctoPrint → klaar. Geen API-sleutels kopiëren.
+📊 DASHBOARD IN ÉÉN OOGOPSLAG — Alle printers op één plek: status, voortgang %, resterende tijd, nozzle & bed temperaturen. Trek om te vernieuwen.
+📷 LIVE CAMERA — MJPEG/snapshot streaming met flip, roteren en auto-reconnect. Houd eerste lagen in de gaten vanaf de bank of werkplaats.
+🎛️ VOLLEDIGE BEDIENING — Jog X/Y/Z, home assen, extrude/retract, nozzle/bed temperaturen, ventilator, noodstop en G-code via terminal sturen.
+📐 G-CODE PREVIEW — 2D & 3D laagviewer met pinch-zoom en orbit. Controleer lagen voor het printen.
+📄 BESTANDSBEHEER — Browse OctoPrint bestanden, preview, start een print of verwijder.
+🔔 SLIMME MELDINGEN — Melding bij print klaar, mislukt of 25/50/75/90 %. Per printer instelbaar en background polling. Respecteert Niet storen.
+🌙 VERZORGD & PRIVÉ — Donker thema, haptiek, offline afhandeling. Hosts, API-sleutels en camera-URL's versleuteld op apparaat, verlaten nooit je netwerk.
+
+HOE HET WERKT
+1) Installeer OctoPulse en ga op hetzelfde Wi-Fi als je OctoPrint.
+2) Tik “Printers zoeken”, kies de jouwe, tik Koppelen & Goedkeuren in OctoPrint.
+3) Monitor voortgang, bekijk camera, pauzeer/stop indien nodig en start je volgende print.
+
+COMPATIBILITEIT
+Werkt met elke printer met OctoPrint — inclusief OctoPi op Raspberry Pi. Als je OctoPrint in de browser kunt openen, kan OctoPulse verbinden. Voor toegang op afstand gebruik je VPN/reverse proxy URL.
+
+PRIVACY EERST
+• Geen account, geen aanmelding.
+• Printbestanden, G-code en camerabeelden gaan nooit naar onze servers.
+• API-sleutels versleuteld met Android Keystore.
+• Geen precieze locatie — detectie scant alleen je lokale subnet.
+Volledig privacybeleid: https://chartmann1590.github.io/octopulse/privacy.html
+
+ADVERTENTIES & PRIJZEN
+OctoPulse is gratis en advertentie-ondersteund via Google AdMob. Kleine verankerde banner en soms fullscreen na setup — nooit tijdens het printen. Je kunt je Advertising ID resetten/verwijderen in Android Instellingen → Privacy → Advertenties. Zie Privacybeleid §4.
+
+MACHTIGINGEN UITGELEGD
+INTERNET, ACCESS_NETWORK_STATE, ACCESS_WIFI_STATE, CHANGE_WIFI_MULTICAST_STATE (voor mDNS), POST_NOTIFICATIONS, RECEIVE_BOOT_COMPLETED, VIBRATE, AD_ID. Geen locatie, camera of contacten.
+
+OPEN SOURCE & ONDERSTEUNING
+OctoPulse is open source (MIT) op github.com/chartmann1590/octopulse. Geef een ster, meld issues of sponsor: buymeacoffee.com/charleshartmann
+
+ONDERSTEUNING
+Problemen of ideeën? Open een issue op GitHub of mail naar hello@octopulse.app
+
+—
+Niet gelieerd aan OctoPrint. OctoPrint is handelsmerk van eigenaren. Ender, Prusa en Bambu zijn handelsmerken van respectieve eigenaren.

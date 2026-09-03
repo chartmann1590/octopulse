@@ -1,1 +1,1 @@
-OctoPulse – OctoPrint Companion
+OctoPulse: OctoPrint Companion

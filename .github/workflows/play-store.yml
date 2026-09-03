@@ -68,14 +68,17 @@ jobs:
           cache: npm
 
       - name: Validate required secrets
+        env:
+          HAS_PLAY_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          HAS_GOOGLE_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
           missing=0
           if [ -z "$ADMOB_ANDROID_APP_ID" ]; then echo "::error::Missing secret ADMOB_ANDROID_APP_ID"; missing=1; fi
           if [ -z "$ADMOB_BANNER_AD_ID" ]; then echo "::error::Missing secret ADMOB_BANNER_AD_ID"; missing=1; fi
           if [ -z "$ADMOB_INTERSTITIAL_AD_ID" ]; then echo "::error::Missing secret ADMOB_INTERSTITIAL_AD_ID"; missing=1; fi
-          if [ -z "${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}" ]; then echo "::warning::PLAY_SERVICE_ACCOUNT_JSON not set — build will succeed but publish will be skipped. Follow store/SERVICE_ACCOUNT.md"; fi
+          if [ -z "$HAS_PLAY_JSON" ]; then echo "::warning::PLAY_SERVICE_ACCOUNT_JSON not set — build will succeed but publish will be skipped. Follow store/SERVICE_ACCOUNT.md"; fi
           # GOOGLE_SERVICES_JSON is optional if you commit google-services.json via artifact, but recommended as secret
-          if [ -z "${{ secrets.GOOGLE_SERVICES_JSON }}" ] && [ ! -f google-services.json ]; then echo "::warning::GOOGLE_SERVICES_JSON secret not set and google-services.json not in repo — Firebase build may fail"; fi
+          if [ -z "$HAS_GOOGLE_JSON" ] && [ ! -f google-services.json ]; then echo "::warning::GOOGLE_SERVICES_JSON secret not set and google-services.json not in repo — Firebase build may fail"; fi
           if [ "$missing" -eq 1 ]; then exit 1; fi
           echo "✓ AdMob secrets present"
           echo "VERSION_CODE=$VERSION_CODE"
@@ -169,10 +172,10 @@ jobs:
           if-no-files-found: error
 
       - name: Prepare service account JSON for upload
-        if: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON != '' }}
         env:
           PLAY_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
         run: |
+          if [ -z "$PLAY_JSON" ]; then echo "::warning::PLAY_SERVICE_ACCOUNT_JSON not set — skipping"; exit 0; fi
           echo "$PLAY_JSON" > /tmp/play-service-account.json
           # Validate it's JSON (not base64)
           if head -c 1 /tmp/play-service-account.json | grep -q "{"; then
@@ -186,7 +189,6 @@ jobs:
           cat /tmp/play-service-account.json | grep client_email || true
 
       - name: Upload to Play Console (internal track by default)
-        if: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON != '' }}
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
@@ -201,6 +203,8 @@ jobs:
 
       - name: Summary
         if: always()
+        env:
+          HAS_PLAY_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
         run: |
           echo "## OctoPulse Play Store Build Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -209,6 +213,6 @@ jobs:
           echo "- AAB: android/app/build/outputs/bundle/release/app-release.aab" >> $GITHUB_STEP_SUMMARY
           echo "- Track: ${{ inputs.track || 'internal' }}" >> $GITHUB_STEP_SUMMARY
           echo "- AdMob App ID present: $(if [ -n \"$ADMOB_ANDROID_APP_ID\" ]; then echo yes; else echo no; fi)" >> $GITHUB_STEP_SUMMARY
-          if [ -z "${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}" ]; then echo "- ⚠️ PLAY_SERVICE_ACCOUNT_JSON not set — publish skipped. See store/SERVICE_ACCOUNT.md" >> $GITHUB_STEP_SUMMARY; else echo "- ✅ Published via service account" >> $GITHUB_STEP_SUMMARY; fi
+          if [ -z "$HAS_PLAY_JSON" ]; then echo "- ⚠️ PLAY_SERVICE_ACCOUNT_JSON not set — publish skipped. See store/SERVICE_ACCOUNT.md" >> $GITHUB_STEP_SUMMARY; else echo "- ✅ Published via service account" >> $GITHUB_STEP_SUMMARY; fi
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Next: In Play Console verify Internal testing → promote to production after review." >> $GITHUB_STEP_SUMMARY

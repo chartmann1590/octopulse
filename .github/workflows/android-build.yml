@@ -74,6 +74,13 @@ jobs:
       - name: Prebuild (generates android/ with AdMob App ID)
         run: npx expo prebuild --clean --no-install
 
+      - name: Patch Kotlin version for play-services-ads 25.4.0
+        run: |
+          echo "Patching Kotlin 2.1.20 -> 2.3.10 for react-native gradle plugin"
+          find node_modules -path "*gradle/libs.versions.toml" -exec sed -i 's/kotlin = "2\.1\.20"/kotlin = "2.3.10"/' {} \; 2>/dev/null || true
+          grep -m1 'kotlin = ' node_modules/@react-native/gradle-plugin/gradle/libs.versions.toml || true
+          echo "✓ Kotlin patch applied"
+
       - name: Verify AndroidManifest contains AdMob App ID
         run: |
           MANIFEST="android/app/src/main/AndroidManifest.xml"

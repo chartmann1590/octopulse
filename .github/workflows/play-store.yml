@@ -161,10 +161,10 @@ jobs:
 
       - name: Patch googleMobileAds SDK for Kotlin 2.1 compatibility
         run: |
-          echo "Patching react-native-google-mobile-ads 25.4.0 -> 24.11.0 for Kotlin 2.1.20 compatibility (keeps AgeRestrictedTreatment)"
+          echo "Patching react-native-google-mobile-ads 25.4.0 -> 24.9.0 for Kotlin 2.1.20 compatibility"
           if grep -q "25.4.0" node_modules/react-native-google-mobile-ads/package.json; then
-            jq '.sdkVersions.android.googleMobileAds = "24.11.0" | .sdkVersions.android.googleUmp = "3.1.0"' node_modules/react-native-google-mobile-ads/package.json > /tmp/pkg.json && mv /tmp/pkg.json node_modules/react-native-google-mobile-ads/package.json
-            echo "✓ Patched googleMobileAds to 24.11.0"
+            jq '.sdkVersions.android.googleMobileAds = "24.9.0" | .sdkVersions.android.googleUmp = "3.1.0"' node_modules/react-native-google-mobile-ads/package.json > /tmp/pkg.json && mv /tmp/pkg.json node_modules/react-native-google-mobile-ads/package.json
+            echo "✓ Patched googleMobileAds to 24.9.0"
             grep -A2 '"googleMobileAds"' node_modules/react-native-google-mobile-ads/package.json | head -n 5 || true
           else
             echo "Already patched or version not 25.4.0"

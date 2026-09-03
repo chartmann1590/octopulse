@@ -171,6 +171,7 @@ jobs:
       - name: Build Android App Bundle (AAB) for Play Store
         run: |
           cd android
+          chmod +x gradlew
           ./gradlew bundleRelease --stacktrace --no-daemon
           echo "AAB built:"
           ls -lh app/build/outputs/bundle/release/*.aab || true

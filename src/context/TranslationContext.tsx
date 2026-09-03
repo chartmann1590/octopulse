@@ -10,7 +10,7 @@ import {
   setModelDownloaded,
   isModelDownloadedCached,
 } from '../services/translation/cache';
-import { initTranslationCache, tSync, tAsync, ensureModelDownloaded, onCacheUpdate, getCurrentLanguageCode } from '../services/translation';
+import { initTranslationCache, tSync, tAsync, ensureModelDownloaded, warmUpCommonTranslations, onCacheUpdate, getCurrentLanguageCode } from '../services/translation';
 import { isNativeAvailable, getBridgeStatus, isModelDownloaded } from '../services/translation/mlkit';
 
 type TranslationContextType = {
@@ -140,6 +140,8 @@ export function TranslationProvider({ children }: { children: React.ReactNode })
       const already = await isModelDownloadedCached(target);
       if (already) {
         setIsModelReady(true);
+        await warmUpCommonTranslations(target);
+        setVersion(v => v + 1);
         return;
       }
 

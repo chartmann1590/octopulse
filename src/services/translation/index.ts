@@ -58,62 +58,55 @@ function enqueueBatchTranslation(text: string, lang: string): Promise<string> {
             const results = await translateBatch(need, 'en', lang);
             const pairs: Record<string, string> = {};
             need.forEach((orig, idx) => {
-              const translated = results[idx] || orig;
-              pairs[orig] = translated;
-              memoryCache[orig] = translated;
+              const translated = results[idx];
+              if (translated && translated.trim().length > 0) {
+                pairs[orig] = translated;
+                memoryCache[orig] = translated;
+              }
             });
-            await addBatchToCache(lang, pairs);
-            // Resolve pending promises
-            for (const orig of need) {
-              const k = `${lang}::${orig}`;
-              const entry = pendingQueue.get(k);
-              // We stored promises externally; they'll resolve via side effect polling?
-              // Instead we resolve by updating memoryCache and notifying subscribers via event
-              // For now, promises remain pending; callers use sync t() which reads memoryCache after batch completes and triggers re-render via context.
+            if (Object.keys(pairs).length > 0) {
+              await addBatchToCache(lang, pairs);
             }
           } else {
             // JS fallback dictionary per item
             const pairs: Record<string, string> = {};
             for (const orig of need) {
               const fb = getFallbackTranslation(orig, lang);
-              const translated = fb ?? orig; // keep English if no fallback
-              pairs[orig] = translated;
-              memoryCache[orig] = translated;
+              if (fb) {
+                pairs[orig] = fb;
+                memoryCache[orig] = fb;
+              }
             }
-            await addBatchToCache(lang, pairs);
+            if (Object.keys(pairs).length > 0) {
+              await addBatchToCache(lang, pairs);
+            }
           }
         } catch (e) {
-          // On failure, keep English fallback
-          for (const orig of need) {
-            memoryCache[orig] = orig;
-          }
+          // On failure, do not permanently cache English fallback so it can retry
         } finally {
-          // Clean pendingQueue entries (they will be re-created if needed, but memoryCache now has value)
+          // Clean pendingQueue entries
           for (const orig of toTranslate) {
             pendingQueue.delete(`${lang}::${orig}`);
           }
-          // Notify listeners via custom event? We'll rely on context's polling or re-render trigger.
-          // Emit via global flag for TranslationContext to observe
+          // Notify all subscribers (AppText components & TranslationContext)
           if (batchFlushListeners.size > 0) {
             const snap = { ...memoryCache };
             batchFlushListeners.forEach(cb => cb(snap));
           }
         }
-      }, 120);
+      }, 30);
     }
 
-    // For now resolve with fallback or cached after batch; but sync t() will have already returned EN.
-    // This promise resolves after batch completes for async callers.
     const handleInterval = setInterval(() => {
       if (memoryCache[text] !== undefined) {
         clearInterval(handleInterval);
         resolve(memoryCache[text]);
       }
-    }, 150);
+    }, 50);
     setTimeout(() => {
       clearInterval(handleInterval);
       resolve(memoryCache[text] ?? text);
-    }, 5000);
+    }, 3000);
   });
 
   pendingQueue.set(key, promise);
@@ -134,7 +127,6 @@ export async function initTranslationCache(lang: string): Promise<void> {
   if (cacheReadyForLang === code) return;
   memoryCache = await loadTranslationCache(code);
   cacheReadyForLang = code;
-  // Clear pendingQueue for new language
   pendingQueue.clear();
   batchQueue = [];
   if (batchTimer) {
@@ -157,7 +149,6 @@ export function getCachedCache(): Record<string, string> {
 /**
  * Synchronous translate function for use in render.
  * Returns cached translation if available; otherwise returns original English and enqueues async translation.
- * Caller should ensure initTranslationCache was called for currentLang.
  */
 export function tSync(englishText: string, lang?: string): string {
   const target = (lang || currentLang).toLowerCase();
@@ -168,17 +159,15 @@ export function tSync(englishText: string, lang?: string): string {
   const fb = getFallbackTranslation(englishText, target);
   if (fb) {
     memoryCache[englishText] = fb;
-    // Persist lazily
     addToTranslationCache(target, englishText, fb).catch(() => {});
     return fb;
   }
 
-  // Enqueue native batch translation (fire & forget for sync path)
-  if (englishText.trim().length > 0 && englishText.length < 800) {
+  // Enqueue native batch translation
+  if (englishText.trim().length > 0 && englishText.length < 1500) {
     enqueueBatchTranslation(englishText, target).catch(() => {});
   }
 
-  // Return English placeholder until translation arrives; context will re-render after cache update
   return englishText;
 }
 
@@ -202,21 +191,43 @@ export async function tAsync(englishText: string, lang?: string): Promise<string
   }
 }
 
-const CORE_STRINGS = [
-  'Printers', 'Settings', 'Discover', 'Add Printer',
-  'MONITOR • CONTROL • PRINT', 'PRINTERS', 'PRINTING', 'ONLINE',
+export const CORE_STRINGS = [
+  'Settings', 'OctoPulse Preferences & Info', 'Language & Translation',
+  'Choose your native language. OctoPulse downloads a FREE on-device ML Kit model (~30 MB) and translates every screen automatically. Works offline after download.',
+  'Change Language', 'Select Language', 'Choose your native language — FREE ML Kit download',
+  'Default', 'Downloaded', 'Not Downloaded', 'Downloading...',
+  'All screens, buttons, and messages will appear in your selected language after the ML Kit is downloaded.',
+  'Notifications & Live Alerts', 'Configure ongoing print progress and completion alerts.',
+  'Global Notifications', 'Master toggle for notifications and alerts',
+  'Print Finished Alert', 'Notify when a 3D print completes',
+  'Printer Error Alerts', 'Notify on thermal runaway or printer disconnects',
+  'Milestone Updates', 'Alerts at 25%, 50%, 75%, and 90% progress',
+  'Live Monitoring Frequency', 'How frequently OctoPulse queries your OctoPrint printers.',
+  'Fast (1.5s)', 'Real-time telemetry', 'Normal (3s)', 'Balanced', 'Eco (5s)', 'Battery saver',
+  'Features & Capabilities', '1-Click Zero-Key Pairing', 'Authorize instantly via OctoPrint Application Keys plugin',
+  '30+ FPS MJPEG Live Camera Feed', 'Hardware-accelerated live stream with snapshot & HUD overlay',
+  '2D & 3D Layer Visualizer', 'Inspect interactive layer toolpaths and print bounds',
+  'Full Machine Control', 'Jog XYZ, extruder feed, heated bed/nozzle presets, and fan speed',
+  'Interactive Terminal Console', 'Direct G-code terminal with quick chip macros',
+  'Open Source & Support', 'OctoPulse is free, open-source software built for the 3D printing community.',
+  'GitHub Repo', 'Report Issue', 'About OctoPulse', 'Version', 'Connected Printers', 'License',
+  'MIT Open Source', 'Printers', 'Discover', 'Add Printer', '+ Add Printer',
+  'MONITOR • CONTROL • PRINT', 'PRINTERS', 'PRINTING', 'ONLINE', 'IDLE', 'PAUSED', 'OFFLINE',
   'No printers connected', 'Auto-discover OctoPrint servers on your Wi-Fi network with 1-click authorization approval.',
   'Discover Printers on Wi-Fi', 'Your Printers', 'Add OctoPrint Server',
   'Auto-discovery or manual entry', 'Close', 'Discovered on Local Network',
   'Rescan', 'Scanning...', 'Scanning local subnet for OctoPrint instances...',
   'No servers detected yet. Ensure your phone and OctoPrint are connected to the same Wi-Fi network.',
   'Manual Configuration', 'Printer Name (Optional)', 'Host / IP Address *', 'Port', 'HTTPS', 'Yes', 'No',
-  'Connect with API Key', 'Request Access & Connect', 'OVERVIEW', 'CONTROL', 'G-CODE', 'FILES', 'TERMINAL', 'ALERTS',
+  'Connect with API Key', 'Request Access & Connect',
+  'OVERVIEW', 'CONTROL', 'G-CODE', 'FILES', 'TERMINAL', 'ALERTS',
   'No file loaded', 'Printing', 'Paused', 'Idle', 'Offline', 'Refresh State', 'Cancel Print', 'Pause Print', 'Resume Print',
-  'Emergency Stop', 'Language & Translation', 'Notifications & Live Alerts', 'Global Notifications',
-  'Live Monitoring Frequency', 'Features & Capabilities', 'Open Source & Support', 'About OctoPulse', 'Version', 'Connected Printers', 'License',
-  'NOZZLE', 'BED', 'Tap to manage →', 'Current', 'Change Language', 'Done', 'Cancel', 'Connect to OctoPrint', 'Save', 'Delete',
-  'Print Finished Alert', 'Printer Error Alerts', 'Milestone Updates'
+  'Emergency Stop', 'NOZZLE', 'BED', 'Tap to manage →', 'Current', 'Done', 'Cancel', 'Connect to OctoPrint', 'Save', 'Delete',
+  'Camera Feed', 'Live', 'Stream', 'Snapshot', 'Fullscreen', 'Layer View →', 'Print Job Actions',
+  'Back', 'Status', 'Print Time', 'Print Time Left', 'Estimated Total', 'Extruder', 'Target', 'Actual',
+  'Home All', 'Home X/Y', 'Home Z', 'Motors Off', 'Fan Off', 'Cooldown', 'Preheat PLA', 'Preheat PETG', 'Preheat ABS',
+  'Send G-code command...', 'Send', 'Terminal Output', 'Auto-scroll', 'Clear Output',
+  'Files on Printer', 'Upload G-Code', 'Storage', 'SD Card', 'Local Storage', 'Print File', 'Delete File'
 ];
 
 export async function warmUpCommonTranslations(langCode: string): Promise<void> {
@@ -228,11 +239,15 @@ export async function warmUpCommonTranslations(langCode: string): Promise<void> 
     const results = await translateBatch(missing, 'en', code);
     const pairs: Record<string, string> = {};
     missing.forEach((orig, idx) => {
-      const tr = results[idx] || orig;
-      pairs[orig] = tr;
-      memoryCache[orig] = tr;
+      const tr = results[idx];
+      if (tr && tr.trim().length > 0) {
+        pairs[orig] = tr;
+        memoryCache[orig] = tr;
+      }
     });
-    await addBatchToCache(code, pairs);
+    if (Object.keys(pairs).length > 0) {
+      await addBatchToCache(code, pairs);
+    }
     if (batchFlushListeners.size > 0) {
       const snap = { ...memoryCache };
       batchFlushListeners.forEach(cb => cb(snap));
@@ -247,8 +262,6 @@ export async function warmUpCommonTranslations(langCode: string): Promise<void> 
 export async function ensureModelDownloaded(langCode: string, onProgress?: (p: number) => void): Promise<boolean> {
   const code = langCode.toLowerCase();
   if (code === 'en') return true;
-  // Simulate progress for UX even though native download is atomic
-  // We use interval progress emitter while native call in progress
   if (onProgress) {
     let pct = 5;
     const iv = setInterval(() => {
@@ -260,7 +273,6 @@ export async function ensureModelDownloaded(langCode: string, onProgress?: (p: n
         await downloadModel('en', code);
         await warmUpCommonTranslations(code);
       } else {
-        // Simulate download delay for JS fallback (so onboarding animation visible)
         await new Promise(r => setTimeout(r, 1800));
       }
       clearInterval(iv);

@@ -1,0 +1,21 @@
+Promo video for Play Store
+
+Source file: docs/video/promo.mp4 (1920x1080, H.264, 31s, 1.1 MB) + poster.jpg + captions.vtt / captions.srt
+Website embed: https://chartmann1590.github.io/octopulse/video/promo.mp4
+Poster: https://chartmann1590.github.io/octopulse/video/poster.jpg (1280x720)
+
+Play Store requires a YouTube URL — NOT a direct MP4 upload.
+Steps:
+1. Upload docs/video/promo.mp4 to YouTube (unlisted or public).
+   Title: "OctoPulse — Your OctoPrint in your pocket (31s)"
+   Description: Use full_description.txt + links to https://chartmann1590.github.io/octopulse/privacy.html and https://github.com/chartmann1590/octopulse
+   Add captions: upload docs/video/captions.vtt (and .srt)
+   Thumbnail: use docs/video/poster.jpg (custom thumbnail 1280x720)
+   Make video public/unlisted (not private).
+2. Copy YouTube watch URL, e.g. https://www.youtube.com/watch?v=XXXXXXXX
+3. Paste into Play Console → Store presence → Main store listing → Promo video (optional) → YouTube URL.
+4. Also add same URL to store/listing/en-US/youtube_url.txt and fastlane/metadata/android/en-US/video.txt for automation docs.
+
+YouTube video must be enabled for embedding. Do not set Made for Kids.
+
+Current promo.mp4 is already optimized: 1920x1080 30fps, AAC audio, ~284 kbps, 31.2s. Passes Play 30s-2min recommendation. Captions included for accessibility.

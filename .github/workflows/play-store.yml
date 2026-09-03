@@ -1,0 +1,214 @@
+name: Play Store — Build & Publish AAB
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "App.tsx"
+      - "app.json"
+      - "app.config.js"
+      - "src/**"
+      - "assets/**"
+      - "package.json"
+      - ".github/workflows/play-store.yml"
+  workflow_dispatch:
+    inputs:
+      track:
+        description: "Play Console track to publish to"
+        required: true
+        default: "internal"
+        type: choice
+        options: [internal, closed, production]
+      status:
+        description: "Release status"
+        required: true
+        default: "draft"
+        type: choice
+        options: [draft, completed]
+      version_code:
+        description: "Override VERSION_CODE (default: github run_number)"
+        required: false
+        type: string
+
+# Needed for uploading to Play via OIDC not used — we use service account JSON
+permissions:
+  contents: read
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    # AdMob + versioning env — injected from GitHub Secrets (never hardcoded)
+    env:
+      ADMOB_ANDROID_APP_ID: ${{ secrets.ADMOB_ANDROID_APP_ID }}
+      ADMOB_BANNER_AD_ID: ${{ secrets.ADMOB_BANNER_AD_ID }}
+      ADMOB_INTERSTITIAL_AD_ID: ${{ secrets.ADMOB_INTERSTITIAL_AD_ID }}
+      EXPO_PUBLIC_ADMOB_ANDROID_APP_ID: ${{ secrets.ADMOB_ANDROID_APP_ID }}
+      EXPO_PUBLIC_ADMOB_BANNER_ID: ${{ secrets.ADMOB_BANNER_AD_ID }}
+      EXPO_PUBLIC_ADMOB_INTERSTITIAL_ID: ${{ secrets.ADMOB_INTERSTITIAL_AD_ID }}
+      ADMOB_IOS_APP_ID: ${{ secrets.ADMOB_IOS_APP_ID }}
+      EXPO_PUBLIC_ADMOB_IOS_APP_ID: ${{ secrets.ADMOB_IOS_APP_ID }}
+      # Versioning — monotonic per Play requirement (must increase). Defaults to run_number + 1, override via workflow_dispatch.
+      VERSION_CODE: ${{ inputs.version_code || github.run_number }}
+      VERSION_NAME: "1.0.0"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17 (for Android/Gradle)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Validate required secrets
+        run: |
+          missing=0
+          if [ -z "$ADMOB_ANDROID_APP_ID" ]; then echo "::error::Missing secret ADMOB_ANDROID_APP_ID"; missing=1; fi
+          if [ -z "$ADMOB_BANNER_AD_ID" ]; then echo "::error::Missing secret ADMOB_BANNER_AD_ID"; missing=1; fi
+          if [ -z "$ADMOB_INTERSTITIAL_AD_ID" ]; then echo "::error::Missing secret ADMOB_INTERSTITIAL_AD_ID"; missing=1; fi
+          if [ -z "${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}" ]; then echo "::warning::PLAY_SERVICE_ACCOUNT_JSON not set — build will succeed but publish will be skipped. Follow store/SERVICE_ACCOUNT.md"; fi
+          # GOOGLE_SERVICES_JSON is optional if you commit google-services.json via artifact, but recommended as secret
+          if [ -z "${{ secrets.GOOGLE_SERVICES_JSON }}" ] && [ ! -f google-services.json ]; then echo "::warning::GOOGLE_SERVICES_JSON secret not set and google-services.json not in repo — Firebase build may fail"; fi
+          if [ "$missing" -eq 1 ]; then exit 1; fi
+          echo "✓ AdMob secrets present"
+          echo "VERSION_CODE=$VERSION_CODE"
+          echo "If this VERSION_CODE is not higher than existing Play version, set a larger version_code input."
+
+      - name: Install deps
+        run: npm ci || npm install
+
+      - name: Restore google-services.json from secret (if provided)
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            echo "$GOOGLE_SERVICES_JSON" > google-services.json
+            # Support base64-encoded variant
+            if head -c 1 google-services.json | grep -q "{"; then
+              echo "✓ google-services.json restored from secret (plain JSON)"
+            else
+              echo "Detected base64 — decoding..."
+              echo "$GOOGLE_SERVICES_JSON" | base64 --decode > google-services.json
+              echo "✓ decoded base64"
+            fi
+            cat google-services.json | head -c 200; echo "..."
+          elif [ -f google-services.json ]; then
+            echo "✓ google-services.json already present (committed or generated)"
+          else
+            echo "::warning::No google-services.json — Firebase may not initialize"
+          fi
+
+      - name: Restore upload keystore from secrets (if provided)
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          mkdir -p android/app || true
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 --decode > android/app/upload.keystore
+            echo "✓ Upload keystore restored to android/app/upload.keystore"
+            ls -lh android/app/upload.keystore
+            # Export for build.gradle signingConfigs.release
+            echo "ANDROID_KEYSTORE_FILE=android/app/upload.keystore" >> $GITHUB_ENV
+            echo "ANDROID_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> $GITHUB_ENV
+            echo "ANDROID_KEY_ALIAS=$KEY_ALIAS" >> $GITHUB_ENV
+            echo "ANDROID_KEY_PASSWORD=$KEY_PASSWORD" >> $GITHUB_ENV
+            # Also legacy names expected by some scripts
+            echo "MYAPP_UPLOAD_STORE_FILE=android/app/upload.keystore" >> $GITHUB_ENV
+            echo "MYAPP_UPLOAD_STORE_PASSWORD=$KEYSTORE_PASSWORD" >> $GITHUB_ENV
+            echo "MYAPP_UPLOAD_KEY_ALIAS=$KEY_ALIAS" >> $GITHUB_ENV
+            echo "MYAPP_UPLOAD_KEY_PASSWORD=$KEY_PASSWORD" >> $GITHUB_ENV
+          else
+            echo "::notice::ANDROID_KEYSTORE_BASE64 not set — will use debug keystore for signing (Play App Signing will re-sign). For production, follow store/PLAY_SIGNING.md"
+          fi
+
+      - name: Expo config check (verify AdMob & versionCode injected)
+        run: |
+          npx expo config --type public > /tmp/expo-config.json
+          cat /tmp/expo-config.json | grep -E "googleMobileAdsAppId|versionCode|version|package" | head -n 30
+          echo "Checking no production AdMob IDs hardcoded in repo..."
+          if grep -R "ca-app-pub-" --include="*.json" --include="*.js" --include="*.ts" --include="*.tsx" . --exclude-dir=node_modules --exclude-dir=.expo --exclude-dir=android 2>/dev/null | grep -v ".env" | grep -v "3940256099942544" | grep -q "ca-app-pub-"; then
+            echo "::error::Production AdMob ID found hardcoded in repo! Use env vars only (test ID 394... is allowed)."
+            grep -R "ca-app-pub-" --include="*.json" --include="*.js" --include="*.ts" --include="*.tsx" . --exclude-dir=node_modules --exclude-dir=.expo --exclude-dir=android | grep -v ".env" | grep -v "3940256099942544" || true
+            exit 1
+          fi
+          echo "✓ Config check passed — VERSION_CODE=$VERSION_CODE injected via env"
+
+      - name: Prebuild (generates android/ with correct package, AdMob ID, versionCode)
+        run: npx expo prebuild --clean --no-install
+
+      - name: Verify AndroidManifest contains AdMob App ID and correct package
+        run: |
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          if grep -q "$ADMOB_ANDROID_APP_ID" "$MANIFEST"; then echo "✓ Manifest has AdMob App ID"; else echo "::error::Manifest missing AdMob App ID"; cat "$MANIFEST" | grep -A2 -B2 "ADMOB\|APPLICATION_ID" || true; exit 1; fi
+          if grep -q "com.charles.octopulse" "$MANIFEST"; then echo "✓ Manifest package correct"; else echo "::warning::Package not found in manifest (may be in build.gradle)"; cat "$MANIFEST" | head -n 40; fi
+          echo "versionCode in build.gradle:"
+          grep -n "versionCode" android/app/build.gradle || true
+
+      - name: Build Android App Bundle (AAB) for Play Store
+        run: |
+          cd android
+          ./gradlew bundleRelease --stacktrace --no-daemon
+          echo "AAB built:"
+          ls -lh app/build/outputs/bundle/release/*.aab || true
+
+      - name: Upload AAB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: octopulse-aab-${{ env.VERSION_CODE }}
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+
+      - name: Prepare service account JSON for upload
+        if: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON != '' }}
+        env:
+          PLAY_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          echo "$PLAY_JSON" > /tmp/play-service-account.json
+          # Validate it's JSON (not base64)
+          if head -c 1 /tmp/play-service-account.json | grep -q "{"; then
+            echo "✓ service account JSON looks like plain JSON"
+          else
+            echo "Detected base64 — decoding"
+            echo "$PLAY_JSON" | base64 --decode > /tmp/play-service-account.json
+          fi
+          ls -lh /tmp/play-service-account.json
+          # Mask email in logs
+          cat /tmp/play-service-account.json | grep client_email || true
+
+      - name: Upload to Play Console (internal track by default)
+        if: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON != '' }}
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.charles.octopulse
+          releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
+          track: ${{ inputs.track || 'internal' }}
+          status: ${{ inputs.status || 'draft' }}
+          # what’s new — from store listing
+          whatsNewDirectory: store/listing/en-US
+          # Optional: mapping file for deobfuscation (if proguard enabled)
+          # mappingFile: android/app/build/outputs/mapping/release/mapping.txt
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## OctoPulse Play Store Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Package: com.charles.octopulse" >> $GITHUB_STEP_SUMMARY
+          echo "- Version: $VERSION_NAME ($VERSION_CODE)" >> $GITHUB_STEP_SUMMARY
+          echo "- AAB: android/app/build/outputs/bundle/release/app-release.aab" >> $GITHUB_STEP_SUMMARY
+          echo "- Track: ${{ inputs.track || 'internal' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- AdMob App ID present: $(if [ -n \"$ADMOB_ANDROID_APP_ID\" ]; then echo yes; else echo no; fi)" >> $GITHUB_STEP_SUMMARY
+          if [ -z "${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}" ]; then echo "- ⚠️ PLAY_SERVICE_ACCOUNT_JSON not set — publish skipped. See store/SERVICE_ACCOUNT.md" >> $GITHUB_STEP_SUMMARY; else echo "- ✅ Published via service account" >> $GITHUB_STEP_SUMMARY; fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Next: In Play Console verify Internal testing → promote to production after review." >> $GITHUB_STEP_SUMMARY

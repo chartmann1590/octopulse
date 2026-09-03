@@ -29,13 +29,18 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
+# local env files - NEVER commit real AdMob IDs / secrets
 .env
-.env*.local
+.env.local
+.env.*.local
+.env.development.local
+.env.production.local
 .env.production
 *.env
+# allow template (contains no secrets)
+!.env.example
 
-# secrets - NEVER commit
+# secrets - NEVER commit (AdMob IDs are in .env / GitHub Secrets)
 google-services.json
 GoogleService-Info.plist
 firebase.json
@@ -44,6 +49,8 @@ eas.json
 secrets/
 *keystore*
 *service-account*.json
+# AdMob production IDs must NOT be hardcoded - use env vars
+# See .env.example and app.config.js
 
 # typescript
 *.tsbuildinfo

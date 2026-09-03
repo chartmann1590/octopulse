@@ -1,0 +1,9 @@
+Feature Graphic: 1024x500 PNG (and JPEG) — required for Play Store.
+
+File: store/assets/feature-graphic-1024x500.png (27547 bytes) + .jpg variant
+Also: fastlane/metadata/android/en-US/images/featureGraphic.png
+
+Design: Dark navy gradient (#020617→#0f172a), OP cyan mark, OctoPulse title, tagline Monitor • Control • Print, pill badge, phone mockup.
+Must have no transparency, no cut-off text, no branding violations. Already meets Play requirements: 1024w x 500h, 24-bit PNG, no alpha.
+
+Upload in Play Console → Store presence → Main store listing → Graphics → Feature graphic.

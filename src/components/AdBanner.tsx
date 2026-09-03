@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
+import Constants from 'expo-constants';
 import { theme } from '../theme';
 
 let BannerAd: any = null;
@@ -17,8 +18,34 @@ try {
   TestIds = ads.TestIds;
 } catch {}
 
-const BANNER_ID = TestIds ? TestIds.BANNER : 'ca-app-pub-3940256099942544/6300978111';
-const INTERSTITIAL_ID = TestIds ? TestIds.INTERSTITIAL : 'ca-app-pub-3940256099942544/1033173712';
+// Resolve AdMob unit IDs from env / expo extra — never hardcode production IDs here
+// Priority: EXPO_PUBLIC_* (Expo public env, available in JS bundle) -> Constants.expoConfig.extra -> TestIds fallback for dev
+function getEnvId(keys: string[]): string | undefined {
+  for (const k of keys) {
+    // process.env is injected by Expo for EXPO_PUBLIC_ vars
+    const v = (process.env as any)?.[k];
+    if (v) return v;
+  }
+  return undefined;
+}
+
+function getExtraId(key: string): string | undefined {
+  const extra = (Constants.expoConfig?.extra ?? (Constants as any).manifest?.extra ?? {}) as any;
+  return extra?.[key];
+}
+
+const GOOGLE_TEST_BANNER = 'ca-app-pub-3940256099942544/6300978111';
+const GOOGLE_TEST_INTERSTITIAL = 'ca-app-pub-3940256099942544/1033173712';
+
+export const BANNER_ID =
+  getEnvId(['EXPO_PUBLIC_ADMOB_BANNER_ID', 'EXPO_PUBLIC_ADMOB_BANNER_AD_ID']) ||
+  getExtraId('admobBannerId') ||
+  (TestIds ? TestIds.BANNER : GOOGLE_TEST_BANNER);
+
+export const INTERSTITIAL_ID =
+  getEnvId(['EXPO_PUBLIC_ADMOB_INTERSTITIAL_ID', 'EXPO_PUBLIC_ADMOB_INTERSTITIAL_AD_ID']) ||
+  getExtraId('admobInterstitialId') ||
+  (TestIds ? TestIds.INTERSTITIAL : GOOGLE_TEST_INTERSTITIAL);
 
 export function AdBanner({ unitId, size }: { unitId?: string; size?: string }) {
   if (BannerAd && BannerAdSize) {
@@ -34,12 +61,13 @@ export function AdBanner({ unitId, size }: { unitId?: string; size?: string }) {
     );
   }
   // Fallback placeholder if native module not linked (Expo Go)
+  const isTest = BANNER_ID === GOOGLE_TEST_BANNER || BANNER_ID?.includes('3940256099942544');
   return (
     <View style={styles.container}>
       <View style={styles.adBox}>
-        <Text style={styles.adLabel}>AD • TEST BANNER</Text>
-        <Text style={styles.adSub}>ca-app-pub-3940256099942544/6300978111</Text>
-        <Text style={styles.adHint}>AdMob linked • Test ID</Text>
+        <Text style={styles.adLabel}>AD • {isTest ? 'TEST BANNER' : 'BANNER'}</Text>
+        <Text style={styles.adSub}>{BANNER_ID}</Text>
+        <Text style={styles.adHint}>AdMob linked • {isTest ? 'Test ID' : 'Production ID'}</Text>
       </View>
     </View>
   );

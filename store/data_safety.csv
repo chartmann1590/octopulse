@@ -1,0 +1,5 @@
+Category,Type,Collected,Shared,Purpose,EncryptedInTransit,UserCanRequestDeletion,Notes
+Device or other IDs,Advertising ID,YES,YES,Advertising,YES,YES,Google AdMob SDK uses AD_ID. User can reset/delete in Android Settings → Privacy → Ads.
+App activity,App interactions (ad taps / views),YES,YES,Advertising;Analytics,YES,YES,AdMob interaction signals.
+App info and performance,Crash logs,YES,YES,Analytics,YES,YES,Firebase Crashlytics. Retention ~90 days aggregated.
+App info and performance,Performance diagnostics (device model OS),YES,YES,Analytics,YES,YES,Firebase Performance.

@@ -1,0 +1,4 @@
+https://www.youtube.com/watch?v=REPLACE_WITH_YOUR_UPLOAD_ID
+
+# After uploading docs/video/promo.mp4 to YouTube, replace this placeholder with the real URL.
+# Then paste same URL in Play Console → Store listing → Preview assets → Promo video

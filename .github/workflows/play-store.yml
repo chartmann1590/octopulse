@@ -163,9 +163,17 @@ jobs:
         run: |
           echo "Patching Kotlin 2.1.20 -> 2.3.10 for react-native gradle plugin + expo modules"
           find node_modules -path "*gradle/libs.versions.toml" -exec sed -i 's/kotlin = "2\.1\.20"/kotlin = "2.3.10"/' {} \; 2>/dev/null || true
-          # Verify
+          # Also ensure kotlinVersion in gradle.properties (used by react-native-google-mobile-ads)
+          if ! grep -q "^kotlinVersion=" android/gradle.properties; then
+            echo "kotlinVersion=2.3.10" >> android/gradle.properties
+            echo "Added kotlinVersion=2.3.10 to android/gradle.properties"
+          else
+            sed -i 's/^kotlinVersion=.*/kotlinVersion=2.3.10/' android/gradle.properties
+            echo "Updated kotlinVersion to 2.3.10"
+          fi
+          cat android/gradle.properties | grep -i kotlin || true
           grep -m1 'kotlin = ' node_modules/@react-native/gradle-plugin/gradle/libs.versions.toml || true
-          echo "✓ Kotlin patch applied (if any files found)"
+          echo "✓ Kotlin patch applied"
 
       - name: Verify AndroidManifest contains AdMob App ID and correct package
         run: |

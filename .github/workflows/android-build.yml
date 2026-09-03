@@ -84,6 +84,19 @@ jobs:
           else
             sed -i 's/^kotlinVersion=.*/kotlinVersion=2.3.10/' android/gradle.properties
           fi
+          if grep -q "25.4.0" node_modules/react-native-google-mobile-ads/package.json; then
+            echo "Patching googleMobileAds 25.4.0 -> 23.6.0"
+            python3 -c "
+import json, pathlib
+p = pathlib.Path('node_modules/react-native-google-mobile-ads/package.json')
+j = json.loads(p.read_text())
+j['sdkVersions']['android']['googleMobileAds'] = '23.6.0'
+if j['sdkVersions']['android']['googleUmp'] == '4.0.0':
+    j['sdkVersions']['android']['googleUmp'] = '3.1.0'
+p.write_text(json.dumps(j, indent=2))
+print('Patched to 23.6.0')
+"
+          fi
           cat android/gradle.properties | grep -i kotlin || true
           grep -m1 'kotlin = ' node_modules/@react-native/gradle-plugin/gradle/libs.versions.toml || true
           echo "✓ Kotlin patch applied"

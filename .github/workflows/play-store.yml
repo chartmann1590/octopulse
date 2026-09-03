@@ -171,9 +171,29 @@ jobs:
             sed -i 's/^kotlinVersion=.*/kotlinVersion=2.3.10/' android/gradle.properties
             echo "Updated kotlinVersion to 2.3.10"
           fi
+          # Downgrade googleMobileAds to 23.6.0 for Kotlin 2.1 compatibility as fallback (if Kotlin patch insufficient)
+          # Keep 25.4.0 if Kotlin 2.3.10 works; but ensure we have a fallback version that builds with 2.1.
+          # We patch package.json to use 23.6.0 which is known to work with Kotlin 2.1.20
+          if grep -q "25.4.0" node_modules/react-native-google-mobile-ads/package.json; then
+            echo "Patching react-native-google-mobile-ads googleMobileAds 25.4.0 -> 23.6.0 for Kotlin 2.1 compatibility"
+            # Use python to patch JSON reliably
+            python3 -c "
+import json, pathlib
+p = pathlib.Path('node_modules/react-native-google-mobile-ads/package.json')
+j = json.loads(p.read_text())
+old = j['sdkVersions']['android']['googleMobileAds']
+j['sdkVersions']['android']['googleMobileAds'] = '23.6.0'
+# also patch googleUmp to compatible version 3.1.0 if needed
+if j['sdkVersions']['android']['googleUmp'] == '4.0.0':
+    j['sdkVersions']['android']['googleUmp'] = '3.1.0'
+p.write_text(json.dumps(j, indent=2))
+print(f'Patched {old} -> 23.6.0')
+"
+            grep -A2 '"googleMobileAds"' node_modules/react-native-google-mobile-ads/package.json || true
+          fi
           cat android/gradle.properties | grep -i kotlin || true
           grep -m1 'kotlin = ' node_modules/@react-native/gradle-plugin/gradle/libs.versions.toml || true
-          echo "✓ Kotlin patch applied"
+          echo "✓ Kotlin + Ads SDK patch applied"
 
       - name: Verify AndroidManifest contains AdMob App ID and correct package
         run: |

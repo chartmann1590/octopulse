@@ -63,9 +63,9 @@ jobs:
           npx expo config --type public | grep -q "googleMobileAdsAppId" && echo "config ok" || echo "config check done"
           # Ensure no non-test AdMob IDs are hardcoded in committed source (test ID 3940256099942544 is allowed)
           echo "Checking no production AdMob IDs hardcoded in repo..."
-          if grep -R "ca-app-pub-" --include="*.json" --include="*.js" --include="*.ts" --include="*.tsx" . --exclude-dir=node_modules --exclude-dir=.expo --exclude-dir=android | grep -v ".env" | grep -v "android-build.yml" | grep -v "3940256099942544" | grep -q "ca-app-pub-"; then
+          if grep -R "ca-app-pub-" --include="*.json" --include="*.js" --include="*.ts" --include="*.tsx" . --exclude-dir=node_modules --exclude-dir=.expo --exclude-dir=android 2>/dev/null | grep -v ".env" | grep -v "android-build.yml" | grep -v "3940256099942544" | grep -v "ca-app-pub-\.\.\." | grep -q "ca-app-pub-"; then
             echo "::error::Production AdMob ID found hardcoded in repo! Use env vars only (test ID 394... is allowed)."
-            grep -R "ca-app-pub-" --include="*.json" --include="*.js" --include="*.ts" --include="*.tsx" . --exclude-dir=node_modules --exclude-dir=.expo --exclude-dir=android | grep -v ".env" | grep -v "3940256099942544" || true
+            grep -R "ca-app-pub-" --include="*.json" --include="*.js" --include="*.ts" --include="*.tsx" . --exclude-dir=node_modules --exclude-dir=.expo --exclude-dir=android | grep -v ".env" | grep -v "3940256099942544" | grep -v "ca-app-pub-\.\.\." || true
             exit 1
           else
             echo "✓ No hardcoded production IDs in tracked files"

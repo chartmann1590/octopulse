@@ -108,16 +108,26 @@ android {
             keyPassword 'android'
         }
         release {
-            // Upload keystore for Play Store — injected via GitHub Secrets in CI
-            // Locally, falls back to debug keystore if env vars not set (internal testing only)
-            def hasUploadStore = findProperty('MYAPP_UPLOAD_STORE_FILE') || System.getenv('ANDROID_KEYSTORE_FILE') || System.getenv('ANDROID_UPLOAD_STORE_FILE')
-            if (hasUploadStore) {
-                storeFile file(hasUploadStore ?: findProperty('MYAPP_UPLOAD_STORE_FILE') ?: System.getenv('ANDROID_KEYSTORE_FILE'))
-                storePassword findProperty('MYAPP_UPLOAD_STORE_PASSWORD') ?: System.getenv('ANDROID_KEYSTORE_PASSWORD') ?: System.getenv('ANDROID_UPLOAD_STORE_PASSWORD')
-                keyAlias findProperty('MYAPP_UPLOAD_KEY_ALIAS') ?: System.getenv('ANDROID_KEY_ALIAS') ?: System.getenv('ANDROID_UPLOAD_KEY_ALIAS')
-                keyPassword findProperty('MYAPP_UPLOAD_KEY_PASSWORD') ?: System.getenv('ANDROID_KEY_PASSWORD') ?: System.getenv('ANDROID_UPLOAD_KEY_PASSWORD')
+            def ksEnv = System.getenv('ANDROID_KEYSTORE_FILE') ?: System.getenv('ANDROID_UPLOAD_STORE_FILE') ?: findProperty('MYAPP_UPLOAD_STORE_FILE')
+            File ksFile = null
+            if (ksEnv) {
+                def candidate1 = file(ksEnv.toString())
+                def candidate2 = file(ksEnv.toString().replace('android/app/', ''))
+                def candidate3 = file(ksEnv.toString().replace('android/', ''))
+                if (candidate1.exists()) {
+                    ksFile = candidate1
+                } else if (candidate2.exists()) {
+                    ksFile = candidate2
+                } else if (candidate3.exists()) {
+                    ksFile = candidate3
+                }
+            }
+            if (ksFile != null && ksFile.exists()) {
+                storeFile ksFile
+                storePassword (System.getenv('ANDROID_KEYSTORE_PASSWORD') ?: System.getenv('ANDROID_UPLOAD_STORE_PASSWORD') ?: findProperty('MYAPP_UPLOAD_STORE_PASSWORD') ?: 'android').toString()
+                keyAlias (System.getenv('ANDROID_KEY_ALIAS') ?: System.getenv('ANDROID_UPLOAD_KEY_ALIAS') ?: findProperty('MYAPP_UPLOAD_KEY_ALIAS') ?: 'androiddebugkey').toString()
+                keyPassword (System.getenv('ANDROID_KEY_PASSWORD') ?: System.getenv('ANDROID_UPLOAD_KEY_PASSWORD') ?: findProperty('MYAPP_UPLOAD_KEY_PASSWORD') ?: 'android').toString()
             } else {
-                // Fallback: use debug keystore (Play internal testing will still sign via Play App Signing)
                 storeFile file('debug.keystore')
                 storePassword 'android'
                 keyAlias 'androiddebugkey'

@@ -165,21 +165,18 @@ jobs:
             npx expo prebuild --clean --no-install
           fi
 
-      - name: Patch googleMobileAds SDK for Kotlin 2.1 compatibility
+      - name: Patch Kotlin version for play-services-ads 25.4.0 (requires Kotlin 2.3.x)
         run: |
-          echo "Patching react-native-google-mobile-ads 25.4.0 -> 23.6.0 for Kotlin 2.1.20 compatibility"
-          if grep -q "25.4.0" node_modules/react-native-google-mobile-ads/package.json; then
-            jq '.sdkVersions.android.googleMobileAds = "23.6.0" | .sdkVersions.android.googleUmp = "3.1.0"' node_modules/react-native-google-mobile-ads/package.json > /tmp/pkg.json && mv /tmp/pkg.json node_modules/react-native-google-mobile-ads/package.json
-            echo "✓ Patched googleMobileAds to 23.6.0"
-            grep -A2 '"googleMobileAds"' node_modules/react-native-google-mobile-ads/package.json | head -n 5 || true
-          else
-            echo "Already patched or version not 25.4.0"
-            grep -A2 '"googleMobileAds"' node_modules/react-native-google-mobile-ads/package.json | head -n 5 || true
+          echo "Patching Kotlin 2.1.20 -> 2.3.10 for react-native gradle plugin"
+          # Only patch the react-native version catalog, not expo's shared plugin
+          if [ -f node_modules/@react-native/gradle-plugin/gradle/libs.versions.toml ]; then
+            sed -i 's/kotlin = "2\.1\.20"/kotlin = "2.3.10"/' node_modules/@react-native/gradle-plugin/gradle/libs.versions.toml
+            echo "Patched react-native gradle plugin Kotlin to 2.3.10"
+            grep -m1 'kotlin = ' node_modules/@react-native/gradle-plugin/gradle/libs.versions.toml || true
           fi
-          # Patch Kotlin source to remove AgeRestrictedTreatment (not in 23.6.0)
-          echo "Patching ReactNativeGoogleMobileAdsModule.kt to remove AgeRestrictedTreatment"
-          sed -i '/AgeRestrictedTreatment/d' node_modules/react-native-google-mobile-ads/android/src/main/java/io/invertase/googlemobileads/ReactNativeGoogleMobileAdsModule.kt || true
-          grep -n "AgeRestrictedTreatment" node_modules/react-native-google-mobile-ads/android/src/main/java/io/invertase/googlemobileads/ReactNativeGoogleMobileAdsModule.kt || echo "✓ Patched, no AgeRestrictedTreatment found"
+          # Also patch any pnpm store copies
+          find node_modules/.pnpm -path "*@react-native+gradle-plugin*/gradle/libs.versions.toml" -exec sed -i 's/kotlin = "2\.1\.20"/kotlin = "2.3.10"/' {} \; 2>/dev/null || true
+          echo "✓ Kotlin patch applied for react-native"
 
       - name: Verify AndroidManifest contains AdMob App ID and correct package
         run: |

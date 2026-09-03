@@ -157,7 +157,13 @@ jobs:
           echo "✓ Config check passed — VERSION_CODE=$VERSION_CODE injected via env"
 
       - name: Prebuild (generates android/ with correct package, AdMob ID, versionCode)
-        run: npx expo prebuild --clean --no-install
+        run: |
+          if [ -f android/app/src/main/java/com/charles/octopulse/MLKitTranslateModule.kt ]; then
+            echo "Custom MLKit native files detected — prebuild without --clean to preserve them"
+            npx expo prebuild --no-install
+          else
+            npx expo prebuild --clean --no-install
+          fi
 
       - name: Patch googleMobileAds SDK for Kotlin 2.1 compatibility
         run: |

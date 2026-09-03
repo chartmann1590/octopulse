@@ -72,7 +72,13 @@ jobs:
           fi
 
       - name: Prebuild (generates android/ with AdMob App ID)
-        run: npx expo prebuild --clean --no-install
+        run: |
+          if [ -f android/app/src/main/java/com/charles/octopulse/MLKitTranslateModule.kt ]; then
+            echo "Custom MLKit files present — prebuild without --clean"
+            npx expo prebuild --no-install
+          else
+            npx expo prebuild --clean --no-install
+          fi
 
       - name: Patch googleMobileAds SDK for Kotlin 2.1 compatibility
         run: |

@@ -43,6 +43,14 @@
     "@react-native-community/cli": "^20.2.0",
     "@react-native/metro-config": "^0.87.1",
     "@types/react": "~19.2.2",
+    "eslint": "^9.39.5",
+    "eslint-config-expo": "~57.0.2",
     "typescript": "~6.0.3"
+  },
+  "pnpm": {
+    "overrides": {
+      "@grpc/grpc-js": "1.14.5",
+      "xcode>uuid": "11.1.1"
+    }
   }
 }

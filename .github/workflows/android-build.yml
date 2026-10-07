@@ -86,6 +86,15 @@ jobs:
             exit 1
           fi
 
+      - name: Create debug keystore if missing (it is gitignored)
+        run: |
+          ks=android/app/debug.keystore
+          if [ ! -f "$ks" ]; then
+            keytool -genkeypair -v -keystore "$ks" -storepass android -alias androiddebugkey \
+              -keypass android -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+
       - name: Build Android (debug APK example)
         run: |
           cd android && ./gradlew assembleDebug --stacktrace

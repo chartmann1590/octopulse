@@ -79,7 +79,7 @@ jobs:
 
         chmod +x gradlew
 
-        ./gradlew assembleRelease --stacktrace --no-daemon 2>&1 | tee -a /tmp/amz-build.log
+        ./gradlew assembleRelease --stacktrace --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a,x86_64 2>&1 | tee -a /tmp/amz-build.log
 
         cd ..
 
@@ -111,12 +111,12 @@ jobs:
         sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
 
         '
-    - name: Emulator test (google_apis image, for the ARM translation that ARM-only native libs need)
+    - name: Emulator test (no Google Play services, like Fire; the APK carries x86_64 libs for the emulator)
       uses: reactivecircus/android-emulator-runner@v2
       with:
         api-level: 30
         profile: Nexus 7 2013
-        target: google_apis
+        target: default
         arch: x86_64
         ram-size: 3072M
         disk-size: 4096M

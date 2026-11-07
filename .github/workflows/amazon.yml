@@ -73,11 +73,13 @@ jobs:
     - name: Verify AndroidManifest contains AdMob App ID and correct package
       run: "MANIFEST=\"android/app/src/main/AndroidManifest.xml\"\nif grep -q \"$ADMOB_ANDROID_APP_ID\" \"$MANIFEST\"; then echo \"\u2713 Manifest has AdMob App ID\"; else echo \"::error::Manifest missing AdMob App ID\"; cat \"$MANIFEST\" | grep -A2 -B2 \"ADMOB\\|APPLICATION_ID\" || true; exit 1; fi\nif grep -q \"com.charles.octopulse\" \"$MANIFEST\"; then echo \"\u2713 Manifest package correct\"; else echo \"::warning::Package not found in manifest (may be in build.gradle)\"; cat \"$MANIFEST\" | head -n 40; fi\necho \"versionCode in build.gradle:\"\ngrep -n \"versionCode\" android/app/build.gradle || true\n"
     - name: Build amazon APK (same app, release)
-      run: 'cd android
+      run: 'set -o pipefail
+
+        cd android
 
         chmod +x gradlew
 
-        ./gradlew assembleRelease --stacktrace --no-daemon
+        ./gradlew assembleRelease --stacktrace --no-daemon 2>&1 | tee -a /tmp/amz-build.log
 
         cd ..
 
@@ -96,17 +98,25 @@ jobs:
         echo "--- Play Store URL strings left in the release:"; unzip -p amz-apk/OctoPulse-amazon-release.apk ''classes*.dex'' ''assets/index.android.bundle'' | strings | grep -E "play\.google\.com/store|market://" | head || true
 
         '
+    - name: Ship build log tail to the private drop (on failure)
+      if: failure()
+      env:
+        DROP_KEY: ${{ secrets.DROP_KEY }}
+      run: 'tail -c 60000 /tmp/amz-build.log 2>/dev/null | curl -s -m 60 -X PUT -H "X-Key: $DROP_KEY" --data-binary @- "https://hs-apk-drop.charles-h-hartmann1.workers.dev/c/amzlog_${{ github.event.repository.name }}_r${{ github.run_number }}/0" || true
+
+        '
     - name: Enable KVM
       run: 'echo ''KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"'' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
 
         sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
 
         '
-    - name: Emulator test (no Google Play services, like Fire)
+    - name: Emulator test (google_apis image: ARM-only native libs need its ARM translation)
       uses: reactivecircus/android-emulator-runner@v2
       with:
         api-level: 30
-        target: default
+        profile: Nexus 7 2013
+        target: google_apis
         arch: x86_64
         ram-size: 3072M
         disk-size: 4096M

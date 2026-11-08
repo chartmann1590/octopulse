@@ -139,6 +139,9 @@ export function OnboardingLanguageScreen() {
           <>
             <TouchableOpacity
               onPress={handleContinue}
+              accessibilityRole="button"
+              accessibilityLabel={selected === 'en' ? 'Continue in English' : `Download ML Kit and continue in ${selectedLang?.name ?? selectedLang?.nativeName ?? 'this language'}`}
+              testID="onboarding-language-continue"
               style={[styles.primaryBtn, selected !== 'en' && styles.primaryBtnHighlight]}
               activeOpacity={0.9}>
               <AppText style={styles.primaryBtnText}>
@@ -148,7 +151,7 @@ export function OnboardingLanguageScreen() {
             </TouchableOpacity>
 
             {selected !== 'en' && (
-              <TouchableOpacity onPress={handleSkip} style={styles.secondaryBtn}>
+              <TouchableOpacity onPress={handleSkip} accessibilityRole="button" accessibilityLabel="Skip, stay in English" style={styles.secondaryBtn}>
                 <AppText style={styles.secondaryBtnText}>Skip (Stay in English)</AppText>
               </TouchableOpacity>
             )}

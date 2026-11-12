@@ -16,12 +16,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 75
     env:
-      ADMOB_ANDROID_APP_ID: ${{ secrets.ADMOB_ANDROID_APP_ID }}
-      ADMOB_BANNER_AD_ID: ${{ secrets.ADMOB_BANNER_AD_ID }}
-      ADMOB_INTERSTITIAL_AD_ID: ${{ secrets.ADMOB_INTERSTITIAL_AD_ID }}
-      EXPO_PUBLIC_ADMOB_ANDROID_APP_ID: ${{ secrets.ADMOB_ANDROID_APP_ID }}
-      EXPO_PUBLIC_ADMOB_BANNER_ID: ${{ secrets.ADMOB_BANNER_AD_ID }}
-      EXPO_PUBLIC_ADMOB_INTERSTITIAL_ID: ${{ secrets.ADMOB_INTERSTITIAL_AD_ID }}
+      # Amazon build: Amazon-linked AdMob app OctoPulse ~7834797877 + its units (ADMOB-DIRECT.md); was secrets -> ~4071407217 (unlinked). Tab, Nov 12 2026
+      ADMOB_ANDROID_APP_ID: ca-app-pub-8382831211800454~7834797877
+      ADMOB_BANNER_AD_ID: ca-app-pub-8382831211800454/6135192069
+      ADMOB_INTERSTITIAL_AD_ID: ca-app-pub-8382831211800454/2195947054
+      EXPO_PUBLIC_ADMOB_ANDROID_APP_ID: ca-app-pub-8382831211800454~7834797877
+      EXPO_PUBLIC_ADMOB_BANNER_ID: ca-app-pub-8382831211800454/6135192069
+      EXPO_PUBLIC_ADMOB_INTERSTITIAL_ID: ca-app-pub-8382831211800454/2195947054
       ADMOB_IOS_APP_ID: ${{ secrets.ADMOB_IOS_APP_ID }}
       EXPO_PUBLIC_ADMOB_IOS_APP_ID: ${{ secrets.ADMOB_IOS_APP_ID }}
       VERSION_CODE: ${{ inputs.version_code || github.run_number }}
